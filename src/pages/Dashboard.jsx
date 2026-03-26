@@ -21,7 +21,7 @@ const TECHNICIANS = [
   { id: 'raphael', name: 'RAPHAEL', color: 'bg-red-500', borderColor: '#ef4444', lightBg: '#fee2e2' },
   { id: 'nuno', name: 'NUNO', color: 'bg-yellow-500', borderColor: '#eab308', lightBg: '#fef3c7' },
   { id: 'rogerio', name: 'ROGÉRIO', color: 'bg-cyan-500', borderColor: '#06b6d4', lightBg: '#cffafe' },
-  { id: 'yano', name: 'YANO', color: 'bg-orange-500', borderColor: '#f97316', lightBg: '#ffedd5' }
+  { id: 'yano', name: 'YANO', color: 'bg-green-500', borderColor: '#10b981', lightBg: '#d1fae5' }
 ];
 
 const TIPO_ICONS = {
@@ -500,6 +500,8 @@ export default function Dashboard() {
   }, [machines]);
 
   const patrickMachinesCount = useMemo(() => machines.filter(m => m.estado?.includes('patrick') && !m.arquivada).length, [machines]);
+  const patrickConcluidaMachines = useMemo(() => machines.filter(m => m.estado?.startsWith('concluida-patrick')), [machines]);
+  const [showPatrickLegacy, setShowPatrickLegacy] = useState(false);
 
   return (
     <div className="min-h-screen" style={{ background: isDarkMode ? 'linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%)' : '#ffffff' }}>
@@ -549,17 +551,7 @@ export default function Dashboard() {
           <div className="flex items-center gap-2 flex-wrap">
             {userPermissions?.canDeleteMachine && (
               <>
-                {patrickMachinesCount > 0 && (
-                  <button
-                    onClick={handleArchivePatrickMachines}
-                    className="px-4 py-2 bg-amber-600 text-white text-xs font-bold tracking-wider hover:bg-amber-700 active:scale-95 transition-all clip-corner"
-                  >
-                    <svg className="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2L19 8M10 12v4M14 12v4" />
-                    </svg>
-                    ARQUIVAR PATRICK ({patrickMachinesCount})
-                  </button>
-                )}
+
                 <button onClick={() => setShowBackupManager(true)} className="px-4 py-2 bg-gray-600 text-white text-xs font-bold tracking-wider hover:bg-gray-700 active:scale-95 transition-all clip-corner">
                   <HardDrive className="w-4 h-4 inline mr-2" />
                   BACKUP
@@ -824,6 +816,48 @@ export default function Dashboard() {
             </div>
           </div>
         </>
+      )}
+
+      {/* Patrick Legacy Panel */}
+      {userPermissions?.canDeleteMachine && patrickConcluidaMachines.length > 0 && (
+        <div className={`mt-6 border-2 rounded-lg overflow-hidden ${isDarkMode ? 'border-gray-700 bg-gray-950' : 'border-gray-300 bg-white'}`}>
+          <button
+            onClick={() => setShowPatrickLegacy(!showPatrickLegacy)}
+            className={`w-full flex items-center justify-between p-3 text-left transition-colors ${isDarkMode ? 'hover:bg-gray-900' : 'hover:bg-gray-50'}`}
+          >
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-green-500"></div>
+              <span className={`text-xs font-bold tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>HISTÓRICO PATRICK — {patrickConcluidaMachines.length} MÁQUINAS CONCLUÍDAS</span>
+            </div>
+            {showPatrickLegacy ? <ChevronUp className={`w-4 h-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} /> : <ChevronDown className={`w-4 h-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />}
+          </button>
+          <AnimatePresence>
+            {showPatrickLegacy && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden"
+              >
+                <div className={`p-3 pt-0 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2`}>
+                  {patrickConcluidaMachines.map(machine => (
+                    <button
+                      key={machine.id}
+                      onClick={() => { setSelectedMachine(machine); setShowObsModal(true); }}
+                      className={`p-2 rounded border text-left transition-colors ${isDarkMode ? 'bg-gray-900 border-gray-700 hover:bg-gray-800' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'}`}
+                    >
+                      <p className={`text-[10px] font-medium truncate ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{machine.modelo}</p>
+                      <p className={`text-xs font-mono font-bold truncate ${isDarkMode ? 'text-white' : 'text-black'}`}>{machine.serie}</p>
+                      {machine.dataConclusao && (
+                        <p className={`text-[9px] mt-0.5 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`}>{new Date(machine.dataConclusao).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: '2-digit' })}</p>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       )}
 
       <BackupManager isOpen={showBackupManager} onClose={() => setShowBackupManager(false)} onSuccess={async () => { await loadMachines(); }} />
