@@ -16,7 +16,7 @@ import OSNotificationsPanel from "../components/dashboard/OSNotificationsPanel";
 import ObservationsModal from "../components/dashboard/ObservationsModal";
 import CreateMachineModal from "../components/dashboard/CreateMachineModal";
 import MachineEditCard from "../components/dashboard/MachineEditCard";
-import TimerButton, { useElapsedTimer, formatDuration } from "../components/dashboard/TimerButton";
+import TimerButton, { useElapsedTimer, formatDuration, saveTimerLocal, clearTimerLocal } from "../components/dashboard/TimerButton";
 
 const TECHNICIANS = [
   { id: 'raphael', name: 'RAPHAEL', color: 'bg-red-500', borderColor: '#ef4444', lightBg: '#fee2e2' },
@@ -30,6 +30,46 @@ const TIPO_ICONS = {
   usada: { icon: Repeat, color: 'text-orange-600', bg: 'bg-orange-100' },
   aluguer: { icon: Package, color: 'text-purple-600', bg: 'bg-purple-100' }
 };
+
+
+// ── Sync Watcher → Portal da Frota ACP ──────────────────────────────────────
+// Mapeia o estado do Watcher para o status do Portal e actualiza TODOS os
+// registos do Portal que tenham o mesmo serial_number da máquina.
+const PORTAL_API = "https://base44.app/api/apps/699ee6a6c0541069d0066cc1/entities/Equipment";
+const PORTAL_KEY = "f8517554492e492090b62dd501ad7e14";
+
+function watcherEstadoToPortalStatus(estado) {
+  if (!estado) return null;
+  if (estado.startsWith("em-preparacao")) return "Em progresso";
+  if (estado.startsWith("concluida"))     return "Pronta";
+  if (estado === "a-fazer")               return "A começar";
+  return null;
+}
+
+async function syncMachineToPortal(serie, novoEstado) {
+  const novoStatus = watcherEstadoToPortalStatus(novoEstado);
+  if (!novoStatus || !serie) return;
+  try {
+    // 1. Buscar todos os registos do Portal com este serial_number
+    const resp = await fetch(`${PORTAL_API}?serial_number=${encodeURIComponent(serie)}&limit=50`, {
+      headers: { "api_key": PORTAL_KEY }
+    });
+    const records = await resp.json();
+    if (!Array.isArray(records) || records.length === 0) return;
+    // 2. Actualizar cada registo encontrado
+    await Promise.all(records.map(r =>
+      fetch(`${PORTAL_API}/${r.id}`, {
+        method: "PUT",
+        headers: { "api_key": PORTAL_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({ status: novoStatus })
+      })
+    ));
+    console.log(`[Portal sync] ${serie} → ${novoStatus} (${records.length} registo(s))`);
+  } catch (e) {
+    console.warn("[Portal sync] Falhou:", e.message);
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 const MachineCardCompact = ({ machine, onClick, isDark, onAssign, showAssignButton, isSelected, onSelect }) => {
   const timerElapsed = useElapsedTimer(machine);
@@ -434,8 +474,10 @@ export default function Dashboard() {
       setShowAssignModal(true);
     } else if (userPermissions?.canMoveMachineToOwnColumn && currentUser?.nome_tecnico) {
       try {
-        await FrotaACP.update(machine.id, { estado: `em-preparacao-${currentUser.nome_tecnico}`, tecnico: currentUser.nome_tecnico, dataAtribuicao: new Date().toISOString() });
+        const novoEstadoSelf = `em-preparacao-${currentUser.nome_tecnico}`;
+        await FrotaACP.update(machine.id, { estado: novoEstadoSelf, tecnico: currentUser.nome_tecnico, dataAtribuicao: new Date().toISOString() });
         await base44.entities.Notificacao.create({ userId: 'admin', message: `${currentUser.nome_tecnico.charAt(0).toUpperCase() + currentUser.nome_tecnico.slice(1)} atribuiu máquina ${machine.serie} - Abrir OS!`, machineId: machine.id, machineSerie: machine.serie, technicianName: currentUser.nome_tecnico, type: 'self_assigned', isRead: false });
+        syncMachineToPortal(machine.serie, novoEstadoSelf);
         await loadMachines();
       } catch (error) { console.error("Erro ao atribuir máquina:", error); alert("Erro ao atribuir máquina. Tente novamente."); }
     }
@@ -444,8 +486,10 @@ export default function Dashboard() {
   const handleAssignToTechnician = async (techId) => {
     if (!machineToAssign) return;
     try {
-      await FrotaACP.update(machineToAssign.id, { estado: `em-preparacao-${techId}`, tecnico: techId, dataAtribuicao: new Date().toISOString() });
+      const novoEstadoAdmin = `em-preparacao-${techId}`;
+      await FrotaACP.update(machineToAssign.id, { estado: novoEstadoAdmin, tecnico: techId, dataAtribuicao: new Date().toISOString() });
       await base44.entities.Notificacao.create({ userId: techId, message: `Nova máquina atribuída: ${machineToAssign.serie}`, machineId: machineToAssign.id, machineSerie: machineToAssign.serie, technicianName: currentUser?.full_name || 'Admin', type: 'os_assignment', isRead: false });
+      syncMachineToPortal(machineToAssign.serie, novoEstadoAdmin);
       await loadMachines();
       setShowAssignModal(false);
       setMachineToAssign(null);
@@ -459,6 +503,7 @@ export default function Dashboard() {
       const updateData = { estado: `concluida-${machine.tecnico}`, dataConclusao: new Date().toISOString() };
       setMachines(prevMachines => prevMachines.map(m => m.id === machineId ? { ...m, ...updateData } : m));
       await FrotaACP.update(machineId, updateData);
+      syncMachineToPortal(machine.serie, updateData.estado);
       await base44.entities.Notificacao.create({ userId: 'admin', message: `Máquina ${machine.serie} concluída`, machineId: machine.id, machineSerie: machine.serie, technicianName: machine.tecnico, type: 'machine_completed', isRead: false });
     } catch (error) { console.error("Erro ao marcar como concluída:", error); alert("Erro ao marcar como concluída. Tente novamente."); await loadMachines(); }
   };
@@ -498,12 +543,16 @@ export default function Dashboard() {
     try {
       const now = new Date().toISOString();
       const data = { timer_inicio: now, timer_ativo: true, timer_pausado: false, timer_fim: null, timer_duracao_minutos: null, timer_acumulado: 0 };
-      // Optimistic update primeiro — antes da chamada de rede
+      // 1. Gravar no localStorage imediatamente (fallback contra reload/race)
+      saveTimerLocal({ id: machineId, ...data });
+      // 2. Optimistic update no state local
       setMachines(prev => prev.map(m => m.id === machineId ? { ...m, ...data } : m));
+      // 3. Persistir na DB
       await FrotaACP.update(machineId, data);
+      // 4. DB confirmou — limpar localStorage (já não precisamos de fallback)
+      clearTimerLocal(machineId);
     } catch (e) {
       console.error("Erro ao iniciar timer:", e);
-      // Rollback em caso de erro
       await loadMachines();
     }
   };
@@ -511,8 +560,10 @@ export default function Dashboard() {
   const handleTimerPause = async (machineId, acumuladoMinutos) => {
     try {
       const data = { timer_ativo: true, timer_pausado: true, timer_acumulado: acumuladoMinutos };
+      saveTimerLocal({ id: machineId, ...data });
       setMachines(prev => prev.map(m => m.id === machineId ? { ...m, ...data } : m));
       await FrotaACP.update(machineId, data);
+      clearTimerLocal(machineId);
     } catch (e) { console.error("Erro ao pausar timer:", e); await loadMachines(); }
   };
 
@@ -520,9 +571,11 @@ export default function Dashboard() {
     try {
       const now = new Date().toISOString();
       const machine = machines.find(m => m.id === machineId);
-      const data = { timer_pausado: false, timer_inicio: now, timer_acumulado: machine?.timer_acumulado || 0 };
+      const data = { timer_pausado: false, timer_ativo: true, timer_inicio: now, timer_acumulado: machine?.timer_acumulado || 0 };
+      saveTimerLocal({ id: machineId, ...data });
       setMachines(prev => prev.map(m => m.id === machineId ? { ...m, ...data } : m));
       await FrotaACP.update(machineId, data);
+      clearTimerLocal(machineId);
     } catch (e) { console.error("Erro ao retomar timer:", e); await loadMachines(); }
   };
 
@@ -530,6 +583,7 @@ export default function Dashboard() {
     try {
       const fim = new Date().toISOString();
       const data = { timer_ativo: false, timer_pausado: false, timer_fim: fim, timer_duracao_minutos: Math.round(duracaoTotal) };
+      clearTimerLocal(machineId); // timer concluído — limpar localStorage
       setMachines(prev => prev.map(m => m.id === machineId ? { ...m, ...data } : m));
       await FrotaACP.update(machineId, data);
     } catch (e) { console.error("Erro ao parar timer:", e); await loadMachines(); }
@@ -538,8 +592,9 @@ export default function Dashboard() {
   const handleTimerReset = async (machineId) => {
     try {
       const data = { timer_ativo: false, timer_pausado: false, timer_inicio: null, timer_fim: null, timer_duracao_minutos: null, timer_acumulado: 0 };
-      await FrotaACP.update(machineId, data);
+      clearTimerLocal(machineId);
       setMachines(prev => prev.map(m => m.id === machineId ? { ...m, ...data } : m));
+      await FrotaACP.update(machineId, data);
     } catch (e) { console.error("Erro ao resetar timer:", e); }
   };
 

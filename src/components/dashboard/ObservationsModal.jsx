@@ -146,6 +146,14 @@ export default function ObservationsModal({ isOpen, onClose, machine, onAddObser
     if (window.confirm(`Deseja mover a máquina ${localMachine.serie} de volta para "A Fazer"?`)) {
       try {
         await FrotaACP.update(localMachine.id, { estado: 'a-fazer', tecnico: null, dataConclusao: null });
+        // Sync Portal da Frota
+        try {
+          const portalResp = await fetch(`https://base44.app/api/apps/699ee6a6c0541069d0066cc1/entities/Equipment?serial_number=${encodeURIComponent(localMachine.serie)}&limit=50`, { headers: { "api_key": "f8517554492e492090b62dd501ad7e14" } });
+          const portalRecs = await portalResp.json();
+          if (Array.isArray(portalRecs)) {
+            await Promise.all(portalRecs.map(r => fetch(`https://base44.app/api/apps/699ee6a6c0541069d0066cc1/entities/Equipment/${r.id}`, { method: "PUT", headers: { "api_key": "f8517554492e492090b62dd501ad7e14", "Content-Type": "application/json" }, body: JSON.stringify({ status: "A começar" }) })));
+          }
+        } catch(e) { console.warn("[Portal sync back]", e.message); }
         onClose();
       } catch (error) {
         console.error("Erro ao mover máquina:", error);

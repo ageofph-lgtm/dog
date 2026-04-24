@@ -27,47 +27,88 @@ export function formatDateTime(isoString) {
   });
 }
 
+// ─── Persistência local do timer ─────────────────────────────────────────────
+// Grava/lê o estado do timer no localStorage como fallback para reloads/updates
+const LS_KEY = (id) => `watcher_timer_${id}`;
+
+export function saveTimerLocal(machine) {
+  if (!machine?.id) return;
+  const snapshot = {
+    timer_ativo:            machine.timer_ativo,
+    timer_pausado:          machine.timer_pausado,
+    timer_inicio:           machine.timer_inicio,
+    timer_acumulado:        machine.timer_acumulado,
+    timer_fim:              machine.timer_fim,
+    timer_duracao_minutos:  machine.timer_duracao_minutos,
+    saved_at:               Date.now(),
+  };
+  try { localStorage.setItem(LS_KEY(machine.id), JSON.stringify(snapshot)); }
+  catch(e) {}
+}
+
+export function clearTimerLocal(machineId) {
+  try { localStorage.removeItem(LS_KEY(machineId)); } catch(e) {}
+}
+
+// Devolve campos de timer mesclando DB + localStorage
+// Regra: se DB tem timer_ativo=false mas local tem timer_ativo=true
+// e o local foi salvo há menos de 5 minutos → usar local (DB ainda não propagou)
+export function resolveTimerFields(machine) {
+  if (!machine?.id) return machine;
+  try {
+    const raw = localStorage.getItem(LS_KEY(machine.id));
+    if (!raw) return machine;
+    const local = JSON.parse(raw);
+    const ageMs = Date.now() - (local.saved_at || 0);
+    const dbAtivo    = machine.timer_ativo === true;
+    const localAtivo = local.timer_ativo  === true;
+    // Se DB confirma ativo: usar DB (está atualizada)
+    if (dbAtivo) {
+      // Limpar local se DB já tem dados mais recentes (timer_inicio bate)
+      if (machine.timer_inicio === local.timer_inicio) clearTimerLocal(machine.id);
+      return machine;
+    }
+    // DB diz inativo mas local diz ativo + recente → usar local
+    if (localAtivo && ageMs < 5 * 60 * 1000) {
+      return { ...machine, ...local };
+    }
+    // Local antigo ou inativo — confiar na DB e limpar
+    clearTimerLocal(machine.id);
+    return machine;
+  } catch(e) { return machine; }
+}
+
 // ─── Hook de elapsed ────────────────────────────────────────────────────────
 // Retorna segundos decorridos em tempo real.
-// Usa um ref interno para o setInterval — nunca depende de props externas que mudam.
+// Usa machineRef para evitar stale closures no setInterval.
 
-export function useElapsedTimer(machine) {
-  // Guardar tudo em refs para evitar dependências instáveis
+export function useElapsedTimer(machineRaw) {
+  // Resolver campos de timer: DB + localStorage fallback
+  const machine = resolveTimerFields(machineRaw);
+
   const timerRef   = useRef(null);
   const machineRef = useRef(machine);
   const [elapsed, setElapsed] = useState(() => computeElapsed(machine));
 
-  // Sincronizar o ref sempre que a prop muda
-  useEffect(() => {
-    machineRef.current = machine;
-  });
+  // Sincronizar o ref sempre que a prop muda (sem criar dependência no effect)
+  useEffect(() => { machineRef.current = resolveTimerFields(machineRef.current.__raw || machineRaw); });
 
   useEffect(() => {
-    function tick() {
-      const m = machineRef.current;
-      setElapsed(computeElapsed(m));
-    }
-
     clearInterval(timerRef.current);
     timerRef.current = null;
 
-    const m = machine;
-    const ativo   = m?.timer_ativo   === true;
-    const pausado = m?.timer_pausado === true;
+    const ativo   = machine?.timer_ativo   === true;
+    const pausado = machine?.timer_pausado === true;
 
     if (ativo && !pausado) {
-      tick(); // imediato
+      const tick = () => setElapsed(computeElapsed(resolveTimerFields(machineRef.current)));
+      tick();
       timerRef.current = setInterval(tick, 1000);
     } else {
-      // Estado estático — só calcular uma vez
-      setElapsed(computeElapsed(m));
+      setElapsed(computeElapsed(machine));
     }
 
-    return () => {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    };
-  // Só reiniciar o interval quando o estado do timer muda de facto
+    return () => { clearInterval(timerRef.current); timerRef.current = null; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     machine?.timer_ativo,
