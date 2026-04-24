@@ -16,6 +16,7 @@ import OSNotificationsPanel from "../components/dashboard/OSNotificationsPanel";
 import ObservationsModal from "../components/dashboard/ObservationsModal";
 import CreateMachineModal from "../components/dashboard/CreateMachineModal";
 import MachineEditCard from "../components/dashboard/MachineEditCard";
+import TimerButton from "../components/dashboard/TimerButton";
 
 const TECHNICIANS = [
   { id: 'raphael', name: 'RAPHAEL', color: 'bg-red-500', borderColor: '#ef4444', lightBg: '#fee2e2' },
@@ -416,6 +417,37 @@ export default function Dashboard() {
   const handleOpenMultiEdit = () => { if (selectedMachines.length > 0) setShowMultiEditModal(true); };
   const handleCloseMultiEdit = () => { setShowMultiEditModal(false); setSelectedMachines([]); };
 
+
+  // ── TIMER HANDLERS ──
+  const handleTimerStart = async (machineId) => {
+    try {
+      const now = new Date().toISOString();
+      await FrotaACP.update(machineId, { timer_inicio: now, timer_ativo: true, timer_fim: null, timer_duracao_minutos: null });
+      setMachines(prev => prev.map(m => m.id === machineId ? { ...m, timer_inicio: now, timer_ativo: true, timer_fim: null, timer_duracao_minutos: null } : m));
+    } catch (e) { console.error("Erro ao iniciar timer:", e); }
+  };
+
+  const handleTimerStop = async (machineId) => {
+    const machine = machines.find(m => m.id === machineId);
+    if (!machine?.timer_inicio) return;
+    try {
+      const fim = new Date();
+      const inicio = new Date(machine.timer_inicio);
+      const duracaoMinutos = Math.round((fim - inicio) / 1000 / 60);
+      const updateData = { timer_ativo: false, timer_fim: fim.toISOString(), timer_duracao_minutos: duracaoMinutos };
+      await FrotaACP.update(machineId, updateData);
+      setMachines(prev => prev.map(m => m.id === machineId ? { ...m, ...updateData } : m));
+    } catch (e) { console.error("Erro ao parar timer:", e); }
+  };
+
+  const handleTimerReset = async (machineId) => {
+    try {
+      const resetData = { timer_ativo: false, timer_inicio: null, timer_fim: null, timer_duracao_minutos: null };
+      await FrotaACP.update(machineId, resetData);
+      setMachines(prev => prev.map(m => m.id === machineId ? { ...m, ...resetData } : m));
+    } catch (e) { console.error("Erro ao resetar timer:", e); }
+  };
+
   const handleDragEnd = async (result) => {
     if (!result.destination) return;
     const { draggableId, destination } = result;
@@ -769,6 +801,9 @@ export default function Dashboard() {
         currentUser={currentUser}
         userPermissions={userPermissions}
         onOpenEdit={(machine) => { setMachineToEdit(machine); setShowEditModal(true); }}
+        onTimerStart={handleTimerStart}
+        onTimerStop={handleTimerStop}
+        onTimerReset={handleTimerReset}
       />
       <EditMachineModal
         isOpen={showEditModal}

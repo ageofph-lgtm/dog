@@ -1,3 +1,4 @@
+import TimerButton from "./TimerButton";
 import React, { useState, useEffect } from "react";
 import { FrotaACP } from "@/entities/all";
 import { Clock, AlertTriangle, CheckCircle2, Repeat, Package, Sparkles } from "lucide-react";
@@ -11,7 +12,7 @@ const TIPO_ICONS = {
   aluguer: { icon: Package }
 };
 
-export default function ObservationsModal({ isOpen, onClose, machine, onAddObservation, onToggleTask, onTogglePriority, onDelete, currentUser, userPermissions, onMarkComplete, onToggleAguardaPecas, allMachines, onOpenEdit }) {
+export default function ObservationsModal({ isOpen, onClose, machine, onAddObservation, onToggleTask, onTogglePriority, onDelete, currentUser, userPermissions, onMarkComplete, onToggleAguardaPecas, allMachines, onOpenEdit, onTimerStart, onTimerStop, onTimerReset }) {
   const [newObs, setNewObs] = useState('');
   const [numeroPedido, setNumeroPedido] = useState('');
   const [showPedidoForm, setShowPedidoForm] = useState(false);
@@ -259,6 +260,20 @@ export default function ObservationsModal({ isOpen, onClose, machine, onAddObser
               </button>
             )}
           </div>
+
+          {/* ── TIMER ── */}
+          {(localMachine.estado?.includes("em-preparacao") || localMachine.estado?.includes("concluida") || localMachine.timer_inicio) && (
+            <div className="p-3 rounded-xl border border-slate-200 bg-slate-50">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">⏱ Timer de Trabalho</p>
+              <TimerButton
+                machine={localMachine}
+                onStart={async (id) => { if (onTimerStart) { await onTimerStart(id); } }}
+                onStop={async (id) => { if (onTimerStop) { await onTimerStop(id); } }}
+                onReset={async (id) => { if (onTimerReset) { await onTimerReset(id); } }}
+                isAdmin={!!userPermissions?.canMoveAnyMachine}
+              />
+            </div>
+          )}
 
           {localMachine.estado?.includes('em-preparacao') && !canEditThisMachine && (
             <div className="p-2 rounded bg-red-50 border border-red-200">
