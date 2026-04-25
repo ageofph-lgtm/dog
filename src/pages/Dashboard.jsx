@@ -18,6 +18,7 @@ import CreateMachineModal from "../components/dashboard/CreateMachineModal";
 import MachineEditCard from "../components/dashboard/MachineEditCard";
 import TimerButton, { useElapsedTimer, formatDuration, saveTimerLocal, clearTimerLocal } from "../components/dashboard/TimerButton";
 import { useTheme } from "../ThemeContext";
+import ProfileSelector from "../components/auth/ProfileSelector";
 
 const TECHNICIANS = [
   { id: 'raphael', name: 'RAPHAEL', color: 'bg-red-500', borderColor: '#ef4444', lightBg: '#fee2e2' },
@@ -795,6 +796,17 @@ export default function Dashboard() {
   const otherTechs = TECHNICIANS.filter(t => t.id !== myTechId);
   const isAdmin    = currentUser?.perfil === 'admin';
 
+  // ── GATE: se o user não tem perfil definido, mostrar ProfileSelector ──
+  if (currentUser && !currentUser.perfil) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: isDarkMode ? '#09090F' : '#F4F4FF' }}>
+        <ProfileSelector onLogin={(user) => setCurrentUser(user)} />
+      </div>
+    );
+  }
+  // ─────────────────────────────────────────────────────────────────────
+
   // Máquinas por técnico
   const myMachines = useMemo(() => machines.filter(m => !m.arquivada && m.estado === `em-preparacao-${myTechId}`), [machines, myTechId]);
   const myConc     = useMemo(() => machines.filter(m => !m.arquivada && m.estado === `concluida-${myTechId}`), [machines, myTechId]);
@@ -1222,7 +1234,46 @@ export default function Dashboard() {
 
       <FullscreenSectionModal isOpen={showAFazerFullscreen} onClose={() => setShowAFazerFullscreen(false)} title="A Fazer" machines={aFazerMachines} icon={Wrench} onOpenMachine={(m) => { setSelectedMachine(m); setShowObsModal(true); }} onAssign={handleAssignMachine} userPermissions={userPermissions} currentUser={currentUser} isDark={isDarkMode} />
       <FullscreenSectionModal isOpen={showConcluidaFullscreen} onClose={() => setShowConcluidaFullscreen(false)} title="Concluída" machines={allConcluidaMachines} icon={CheckCircle2} onOpenMachine={(m) => { setSelectedMachine(m); setShowObsModal(true); }} userPermissions={userPermissions} currentUser={currentUser} isDark={isDarkMode} />
-      {showObsModal && selectedMachine && <ObservationsModal machine={selectedMachine} onClose={() => { setShowObsModal(false); setSelectedMachine(null); }} onUpdate={handleMachineUpdate} onAddObs={handleAddObservation} currentUser={currentUser} userPermissions={userPermissions} isDark={isDarkMode} />}
+      {showObsModal && selectedMachine && (
+        <ObservationsModal
+          isOpen={true}
+          machine={selectedMachine}
+          allMachines={machines}
+          onClose={() => { setShowObsModal(false); setSelectedMachine(null); }}
+          onAddObservation={handleAddObservation}
+          onToggleTask={async (taskIdx) => {
+            const updated = [...(selectedMachine.tarefas || [])];
+            updated[taskIdx] = { ...updated[taskIdx], concluida: !updated[taskIdx].concluida };
+            await FrotaACP.update(selectedMachine.id, { tarefas: updated });
+            await loadMachines();
+          }}
+          onTogglePriority={async () => {
+            await FrotaACP.update(selectedMachine.id, { prioridade: !selectedMachine.prioridade });
+            await loadMachines();
+          }}
+          onToggleAguardaPecas={async () => {
+            await FrotaACP.update(selectedMachine.id, { aguardaPecas: !selectedMachine.aguardaPecas });
+            await loadMachines();
+          }}
+          onMarkComplete={async () => {
+            await FrotaACP.update(selectedMachine.id, { estado: 'concluida' });
+            syncMachineToPortal(selectedMachine.serie, 'concluida');
+            setShowObsModal(false);
+            setSelectedMachine(null);
+            await loadMachines();
+          }}
+          onDelete={async () => {
+            if (window.confirm('Apagar esta máquina?')) {
+              await FrotaACP.delete(selectedMachine.id);
+              setShowObsModal(false);
+              setSelectedMachine(null);
+              await loadMachines();
+            }
+          }}
+          currentUser={currentUser}
+          userPermissions={userPermissions}
+        />
+      )}
       {showCreateModal && <CreateMachineModal onClose={() => { setShowCreateModal(false); setPrefillData(null); }} onCreate={handleCreateMachine} prefillData={prefillData} isDark={isDarkMode} />}
       {showImageModal && <ImageUploadModal onClose={() => setShowImageModal(false)} onMachineDetected={(data) => { setPrefillData(data); setShowImageModal(false); setShowCreateModal(true); }} isDark={isDarkMode} />}
       {showBulkCreateModal && <BulkCreateModal onClose={() => setShowBulkCreateModal(false)} onCreate={handleBulkCreate} isDark={isDarkMode} />}
