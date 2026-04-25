@@ -26,11 +26,11 @@ export default function ObservationsModal({
   // ── cores ──────────────────────────────────────────────────────────────
   const C = {
     bg:       isDark ? '#0D0D1A' : '#FFFFFF',
-    surface:  isDark ? '#111128' : '#F8F8FF',
-    border:   isDark ? '#1C1C35' : '#E0E0F0',
+    surface:  isDark ? '#161630' : '#F8F8FF',
+    border:   isDark ? '#2A2A50' : '#E0E0F0',
     text:     isDark ? '#E8E8FF' : '#080818',
-    muted:    isDark ? '#5050A0' : '#8888AA',
-    label:    isDark ? '#8080C0' : '#4040A0',
+    muted:    isDark ? '#9090C8' : '#8888AA',
+    label:    isDark ? '#B0B0E0' : '#4040A0',
     blue:     '#4D9FFF',
     pink:     '#FF2D78',
     green:    '#22C55E',
@@ -52,8 +52,8 @@ export default function ObservationsModal({
     }),
     section: {
       padding: '12px', borderRadius: '10px',
-      border: `1px solid ${isDark ? '#1C1C35' : '#E2E2F0'}`,
-      background: isDark ? '#0F0F1E' : '#F8F8FF',
+      border: `1px solid ${isDark ? '#2A2A50' : '#E2E2F0'}`,
+      background: isDark ? '#13132A' : '#F8F8FF',
       marginBottom: '12px'
     },
     label: {
@@ -64,7 +64,7 @@ export default function ObservationsModal({
     input: {
       width: '100%', padding: '8px 10px', borderRadius: '6px',
       border: `1px solid ${C.border}`, fontSize: '13px',
-      background: isDark ? '#0A0A14' : '#FFFFFF',
+      background: isDark ? '#12122A' : '#FFFFFF',
       color: C.text, outline: 'none', boxSizing: 'border-box'
     },
   };
