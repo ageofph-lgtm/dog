@@ -19,6 +19,7 @@ import MachineEditCard from "../components/dashboard/MachineEditCard";
 import TimerButton, { useElapsedTimer, formatDuration, saveTimerLocal, clearTimerLocal } from "../components/dashboard/TimerButton";
 import { useTheme } from "../ThemeContext";
 import ProfileSelector from "../components/auth/ProfileSelector";
+import { LayoutUserContext } from "../Layout";
 
 const TECHNICIANS = [
   { id: 'raphael', name: 'RAPHAEL', color: 'bg-red-500', borderColor: '#ef4444', lightBg: '#fee2e2' },
@@ -384,7 +385,11 @@ export default function Dashboard() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
   const [prefillData, setPrefillData] = useState(null);
-  const [currentUser, setCurrentUser] = useState(null);
+  // Auth vem do Layout — única fonte de verdade
+  const layoutUser = React.useContext(LayoutUserContext);
+  const currentUser = layoutUser?.user || null;
+  const setCurrentUser = layoutUser?.setUser || (() => {});
+  // showProfileSelector mantido para compatibilidade mas não usado — auth é do Layout
   const [showProfileSelector, setShowProfileSelector] = useState(false);
   const [selectedMachine, setSelectedMachine] = useState(null);
   const [showObsModal, setShowObsModal] = useState(false);
@@ -433,25 +438,7 @@ export default function Dashboard() {
     setIsLoading(false);
   }, []);
 
-  useEffect(() => {
-    const loadUser = async () => {
-      try {
-        // Tentar recuperar perfil do localStorage primeiro (sessão persistida)
-        const saved = localStorage.getItem('watcher_profile');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          setCurrentUser(parsed);
-          setShowProfileSelector(false);
-          return;
-        }
-        // Se não há sessão salva, mostrar ProfileSelector
-        setShowProfileSelector(true);
-      } catch (e) {
-        setShowProfileSelector(true);
-      }
-    };
-    loadUser();
-  }, []);
+  // loadUser removido — auth gerida pelo Layout via LayoutUserContext
 
   useEffect(() => { loadMachines(); }, [loadMachines]);
 
@@ -858,36 +845,57 @@ export default function Dashboard() {
         .mini-scroll::-webkit-scrollbar-thumb { background: rgba(74,74,122,0.5); }
       `}</style>
 
-      {/* ══ HERO TOPO — sem nav acima, aparece primeiro ══════════════ */}
+      {/* ══ HERO STICKY — cola no topo, logo nunca desaparece ══════════ */}
       <div style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 90,
         display: 'flex', flexDirection: 'column', alignItems: 'center',
-        padding: '28px 0 16px',
+        padding: '18px 16px 14px',
+        background: isDarkMode ? 'rgba(9,9,15,0.97)' : 'rgba(244,244,255,0.97)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
         borderBottom: `1px solid ${D.border}`,
-        marginBottom: '14px',
+        marginLeft: '-16px', marginRight: '-16px',
       }}>
+        {/* Linha de acento rosa-azul no topo */}
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: `linear-gradient(90deg, transparent, ${D.pink} 30%, ${D.blue} 70%, transparent)` }} />
+
         <img
           src="https://media.base44.com/images/public/69c166ad19149fb0c07883cb/a35751fd9_Gemini_Generated_Image_scmohbscmohbscmo1.png"
           alt="WATCHER"
-          style={{ width: '88px', height: '88px', objectFit: 'contain',
-            filter: 'drop-shadow(0 0 18px rgba(255,45,120,0.7)) drop-shadow(0 0 36px rgba(77,159,255,0.25))' }}
+          style={{ width: '80px', height: '80px', objectFit: 'contain',
+            filter: 'drop-shadow(0 0 18px rgba(255,45,120,0.7)) drop-shadow(0 0 32px rgba(77,159,255,0.25))' }}
         />
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '6px' }}>
           <span style={{ fontFamily: 'monospace', fontSize: '20px', fontWeight: 900, color: D.pink, textShadow: `0 0 16px ${D.pink}` }}>[</span>
           <span style={{ fontFamily: 'monospace', fontSize: '20px', fontWeight: 900, letterSpacing: '0.22em', color: D.text }}>WATCHER</span>
           <span style={{ fontFamily: 'monospace', fontSize: '20px', fontWeight: 900, color: D.pink, textShadow: `0 0 16px ${D.pink}` }}>]</span>
         </div>
-        <div style={{ marginTop: '10px', width: '200px', height: '1px', background: `linear-gradient(90deg, transparent, ${D.pink}, ${D.blue}, transparent)`, opacity: 0.5 }} />
+        <div style={{ marginTop: '8px', width: '180px', height: '1px', background: `linear-gradient(90deg, transparent, ${D.pink}, ${D.blue}, transparent)`, opacity: 0.5 }} />
 
-        {/* BOTÕES ADMIN — logo abaixo do título, sempre visíveis */}
+        {/* BOTÕES ADMIN — visíveis só para admin, dentro do hero */}
         {(userPermissions?.canCreateMachine || userPermissions?.canDeleteMachine) && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', justifyContent: 'center', marginTop: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', justifyContent: 'center', marginTop: '12px' }}>
             {userPermissions?.canDeleteMachine && (
-              <button onClick={() => setShowBackupManager(true)} style={{ padding: '6px 14px', background: isDarkMode ? '#1A1A2E' : '#F0F0F8', color: D.muted, border: `1px solid ${D.border}`, borderRadius: '7px', fontFamily: 'monospace', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>BACKUP</button>
+              <button onClick={() => setShowBackupManager(true)}
+                style={{ padding: '6px 14px', background: isDarkMode ? '#1A1A2E' : '#F0F0F8', color: D.muted, border: `1px solid ${D.border}`, borderRadius: '7px', fontFamily: 'monospace', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>
+                BACKUP
+              </button>
             )}
             {userPermissions?.canCreateMachine && (<>
-              <button onClick={() => setShowBulkCreateModal(true)} style={{ padding: '6px 14px', background: 'rgba(77,159,255,0.12)', color: D.blue, border: `1px solid rgba(77,159,255,0.4)`, borderRadius: '7px', fontFamily: 'monospace', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>+ MASSIVA</button>
-              <button onClick={() => setShowImageModal(true)} style={{ padding: '6px 14px', background: 'rgba(155,92,246,0.12)', color: D.purple, border: `1px solid rgba(155,92,246,0.4)`, borderRadius: '7px', fontFamily: 'monospace', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>IA FOTO</button>
-              <button onClick={() => { setPrefillData(null); setShowCreateModal(true); }} style={{ padding: '6px 18px', background: `linear-gradient(135deg, ${D.pink}, ${D.purple})`, color: '#fff', border: 'none', borderRadius: '7px', fontFamily: 'monospace', fontSize: '11px', fontWeight: 700, cursor: 'pointer', boxShadow: `0 0 14px rgba(255,45,120,0.45)` }}>+ NOVA</button>
+              <button onClick={() => setShowBulkCreateModal(true)}
+                style={{ padding: '6px 14px', background: 'rgba(77,159,255,0.12)', color: D.blue, border: `1px solid rgba(77,159,255,0.4)`, borderRadius: '7px', fontFamily: 'monospace', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>
+                + MASSIVA
+              </button>
+              <button onClick={() => setShowImageModal(true)}
+                style={{ padding: '6px 14px', background: 'rgba(155,92,246,0.12)', color: D.purple, border: `1px solid rgba(155,92,246,0.4)`, borderRadius: '7px', fontFamily: 'monospace', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>
+                IA FOTO
+              </button>
+              <button onClick={() => { setPrefillData(null); setShowCreateModal(true); }}
+                style={{ padding: '6px 18px', background: `linear-gradient(135deg, ${D.pink}, ${D.purple})`, color: '#fff', border: 'none', borderRadius: '7px', fontFamily: 'monospace', fontSize: '11px', fontWeight: 700, cursor: 'pointer', boxShadow: `0 0 14px rgba(255,45,120,0.45)` }}>
+                + NOVA
+              </button>
             </>)}
           </div>
         )}
