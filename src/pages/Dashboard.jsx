@@ -76,83 +76,87 @@ const MachineCardCompact = ({ machine, onClick, isDark, onAssign, showAssignButt
   const hasHistory = machine.historicoCriacoes && machine.historicoCriacoes.length > 0;
   const hasExpress = machine.tarefas?.some(t => t.texto === 'EXPRESS');
   const otherTasks = machine.tarefas?.filter(t => t.texto !== 'EXPRESS') || [];
+  const timerAtivo   = machine?.timer_ativo === true;
+  const timerPausado = machine?.timer_pausado === true;
 
-  let bgColor = isDark ? 'bg-gray-900' : 'bg-white';
-  let borderColor = isDark ? 'border-gray-700' : 'border-black';
+  const surface  = isDark ? '#111827' : '#FFFFFF';
+  const border   = isSelected ? '#3B82F6' : isDark ? '#1F2937' : '#E5E7EB';
+  const textMain = isDark ? '#F9FAFB' : '#111827';
+  const textSub  = isDark ? '#6B7280' : '#6B7280';
+  const divider  = isDark ? '#1F2937' : '#F3F4F6';
 
-  if (machine.recondicao?.bronze && machine.recondicao?.prata) {
-    bgColor = 'bg-gradient-to-br from-amber-600 to-gray-400';
-  } else if (machine.recondicao?.bronze) {
-    bgColor = 'bg-gradient-to-br from-amber-600 to-amber-400';
-  } else if (machine.recondicao?.prata) {
-    bgColor = 'bg-gradient-to-br from-gray-400 to-gray-300';
-  }
+  const reconBadge = machine.recondicao?.bronze && machine.recondicao?.prata ? '#D4AF37'
+    : machine.recondicao?.bronze ? '#CD7F32'
+    : machine.recondicao?.prata ? '#9E9E9E' : null;
 
   return (
-    <div className={`w-full p-3 sm:p-4 border-2 transition-all clip-corner-all relative overflow-hidden ${isSelected ? 'border-blue-500 bg-blue-100 ring-4 ring-blue-300' : `${bgColor} ${borderColor}`}`}>
-      {machine.prioridade && (
-        <div className="absolute top-0 right-16 sm:right-20 w-6 h-full bg-red-600 flex items-center justify-center">
-          <span className="text-white text-[10px] font-bold" style={{ writingMode: 'vertical-rl' }}>PRIO</span>
-        </div>
-      )}
-      {hasExpress && (
-        <div className="absolute top-1/2 right-24 sm:right-28 transform -translate-y-1/2 opacity-20 pointer-events-none">
-          <svg className="w-8 h-8 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
-          </svg>
-        </div>
-      )}
-      <div className="flex items-start justify-between gap-2">
-        <button
-          onClick={(e) => {
-            e.preventDefault(); e.stopPropagation();
-            if (e.ctrlKey || e.metaKey) { onSelect && onSelect(machine); }
-            else { onClick(machine); }
-          }}
-          className="flex flex-col gap-1 flex-1 min-w-0 group"
-        >
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0"></div>
-            <span className={`text-xs font-medium truncate ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{machine.modelo}</span>
+    <div
+      style={{
+        background: isSelected ? (isDark ? '#1E3A5F' : '#EFF6FF') : surface,
+        border: `1px solid ${border}`,
+        borderLeft: `3px solid ${machine.prioridade ? '#EF4444' : isDark ? '#374151' : '#D1D5DB'}`,
+        borderRadius: '6px',
+        boxShadow: isSelected ? '0 0 0 2px #3B82F6' : isDark ? '0 1px 3px rgba(0,0,0,0.4)' : '0 1px 2px rgba(0,0,0,0.06)',
+        marginBottom: '6px',
+        overflow: 'hidden',
+      }}
+    >
+      <div
+        style={{ display: 'flex', alignItems: 'stretch', cursor: 'pointer' }}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (e.ctrlKey || e.metaKey) { onSelect && onSelect(machine); } else { onClick(machine); } }}
+      >
+        {/* LEFT: main info */}
+        <div style={{ flex: 1, minWidth: 0, padding: '10px 12px' }}>
+          {/* Row 1: modelo + badges */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '2px' }}>
+            <span style={{ fontSize: '11px', color: textSub, fontWeight: 500, fontFamily: 'Inter, sans-serif' }}>{machine.modelo}</span>
+            {machine.prioridade && (
+              <span style={{ fontSize: '9px', fontWeight: 700, padding: '1px 5px', borderRadius: '3px', background: 'rgba(239,68,68,0.12)', color: '#EF4444', fontFamily: 'monospace', letterSpacing: '0.05em' }}>PRIO</span>
+            )}
+            {hasExpress && (
+              <span style={{ fontSize: '9px', fontWeight: 700, padding: '1px 5px', borderRadius: '3px', background: 'rgba(245,158,11,0.12)', color: '#F59E0B', fontFamily: 'monospace' }}>EXPRESS</span>
+            )}
+            {reconBadge && (
+              <span style={{ fontSize: '9px', fontWeight: 700, padding: '1px 5px', borderRadius: '3px', background: `${reconBadge}20`, color: reconBadge, fontFamily: 'monospace' }}>
+                {machine.recondicao?.bronze && machine.recondicao?.prata ? 'BRZ+PRT' : machine.recondicao?.bronze ? 'BRZ' : 'PRT'}
+              </span>
+            )}
+            {hasHistory && <Repeat style={{ width: '10px', height: '10px', color: '#3B82F6', flexShrink: 0 }} />}
           </div>
-          <span className={`text-sm font-mono font-bold truncate ${isDark ? 'text-white' : 'text-black'}`}>{machine.serie}</span>
-          <div className="flex flex-wrap gap-1 mt-1">
-            {machine.recondicao?.bronze && <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-700 text-white font-bold">BRZ</span>}
-            {machine.recondicao?.prata && <span className="text-[9px] px-1.5 py-0.5 rounded bg-gray-500 text-white font-bold">PRT</span>}
-          </div>
+          {/* Row 2: série */}
+          <div style={{ fontFamily: 'monospace', fontSize: '13px', fontWeight: 700, color: textMain, letterSpacing: '0.04em', marginBottom: '4px' }}>{machine.serie}</div>
+          {/* Row 3: tarefas */}
           {otherTasks.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1">
-              {otherTasks.map((tarefa, idx) => (
-                <span key={idx} className="text-[9px] px-1.5 py-0.5 rounded bg-gray-700 text-white font-medium">{tarefa.texto}</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '4px' }}>
+              {otherTasks.map((t, i) => (
+                <span key={i} style={{ fontSize: '9px', fontWeight: 600, padding: '1px 5px', borderRadius: '3px', background: isDark ? '#1F2937' : '#F3F4F6', color: textSub, fontFamily: 'monospace' }}>{t.texto}</span>
               ))}
             </div>
           )}
-          <div className="flex items-center gap-2 mt-1 flex-shrink-0">
-            {hasHistory && <Repeat className="w-3 h-3 text-blue-500" title="Máquina já foi registrada anteriormente" />}
-            {machine.aguardaPecas && <Clock className="w-3 h-3 text-yellow-500" />}
-          </div>
-          {/* Timer ticker ao vivo */}
-          {timerElapsed !== null && (machine.timer_ativo || machine.timer_pausado) && (
-            <div className={`flex items-center gap-1 mt-1 text-[10px] font-mono font-bold tabular-nums ${machine.timer_pausado ? 'text-yellow-500' : 'text-emerald-500'}`}>
-              {machine.timer_pausado
-                ? <><span className="w-1.5 h-1.5 rounded-full bg-yellow-400 inline-block" /> {formatDuration(timerElapsed)}<span className="font-normal ml-0.5 text-slate-400">pausado</span></>
-                : <><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping inline-block" /> {formatDuration(timerElapsed)}</>
-              }
+          {/* Row 4: timer */}
+          {timerElapsed !== null && (timerAtivo || timerPausado) && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px' }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: timerPausado ? '#F59E0B' : '#22C55E', display: 'inline-block', animation: timerAtivo && !timerPausado ? 'pulse 1s infinite' : 'none' }} />
+              <span style={{ fontSize: '10px', fontFamily: 'monospace', fontWeight: 700, color: timerPausado ? '#F59E0B' : '#22C55E', letterSpacing: '0.04em' }}>{formatDuration(timerElapsed)}</span>
+              {timerPausado && <span style={{ fontSize: '9px', color: textSub }}>pausado</span>}
             </div>
           )}
-          {!machine.timer_ativo && !machine.timer_pausado && machine.timer_duracao_minutos != null && (
-            <div className="flex items-center gap-1 mt-1 text-[10px] font-mono font-bold text-emerald-400 tabular-nums">
-              <Clock className="w-2.5 h-2.5" /> {formatDuration(machine.timer_duracao_minutos * 60)}
+          {!timerAtivo && !timerPausado && machine.timer_duracao_minutos != null && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px' }}>
+              <Clock style={{ width: '10px', height: '10px', color: '#4ADE80' }} />
+              <span style={{ fontSize: '10px', fontFamily: 'monospace', fontWeight: 700, color: '#4ADE80' }}>{formatDuration(machine.timer_duracao_minutos * 60)}</span>
             </div>
           )}
-        </button>
+        </div>
+
+        {/* RIGHT: assign button */}
         {showAssignButton && onAssign && (
-          <button
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAssign(machine); }}
-            className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-red-600 hover:bg-red-700 active:scale-95 transition-all flex items-center justify-center z-10"
-          >
-            <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', padding: '8px 8px 8px 0' }}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAssign(machine); }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '6px', background: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'background 0.15s' }}>
+              <ChevronRight style={{ width: '18px', height: '18px', color: 'white' }} />
+            </div>
+          </div>
         )}
       </div>
     </div>
@@ -163,90 +167,78 @@ const MachineCardTechnician = ({ machine, onClick, techColor, isDark, isSelected
   const hasHistory = machine.historicoCriacoes && machine.historicoCriacoes.length > 0;
   const hasExpress = machine.tarefas?.some(t => t.texto === 'EXPRESS');
   const otherTasks = machine.tarefas?.filter(t => t.texto !== 'EXPRESS') || [];
-
-  // Timer ao vivo
   const timerAtivo   = machine?.timer_ativo === true;
   const timerPausado = machine?.timer_pausado === true;
   const timerDone    = !timerAtivo && machine?.timer_fim;
-  const timerElapsed = useElapsedTimer(machine); // segundos
+  const timerElapsed = useElapsedTimer(machine);
 
-  let bgColor = isDark ? 'bg-gray-900 hover:bg-gray-800' : 'bg-white hover:bg-gray-50';
-  if (machine.recondicao?.bronze && machine.recondicao?.prata) bgColor = 'bg-gradient-to-br from-amber-600 to-gray-400 hover:opacity-90';
-  else if (machine.recondicao?.bronze) bgColor = 'bg-gradient-to-br from-amber-600 to-amber-400 hover:opacity-90';
-  else if (machine.recondicao?.prata) bgColor = 'bg-gradient-to-br from-gray-400 to-gray-300 hover:opacity-90';
+  const surface  = isDark ? '#111827' : '#FFFFFF';
+  const border   = isSelected ? '#3B82F6' : isDark ? '#1F2937' : '#E5E7EB';
+  const textMain = isDark ? '#F9FAFB' : '#111827';
+  const textSub  = isDark ? '#6B7280' : '#6B7280';
 
   return (
     <button
       onClick={(e) => { if (e.ctrlKey || e.metaKey) { onSelect && onSelect(machine); } else { onClick(machine); } }}
-      className={`w-full text-left p-3 border-l-4 transition-all mb-2 clip-corner relative overflow-hidden ${isSelected ? 'bg-blue-100 ring-4 ring-blue-300' : bgColor}`}
-      style={{ borderLeftColor: isSelected ? '#3b82f6' : techColor }}
+      style={{
+        width: '100%',
+        textAlign: 'left',
+        background: isSelected ? (isDark ? '#1E3A5F' : '#EFF6FF') : surface,
+        border: `1px solid ${border}`,
+        borderLeft: `3px solid ${isSelected ? '#3B82F6' : techColor}`,
+        borderRadius: '6px',
+        padding: '9px 10px',
+        marginBottom: '6px',
+        cursor: 'pointer',
+        boxShadow: isDark ? '0 1px 3px rgba(0,0,0,0.4)' : '0 1px 2px rgba(0,0,0,0.06)',
+        transition: 'all 0.12s',
+        position: 'relative',
+        overflow: 'hidden',
+      }}
     >
-      {machine.prioridade && (
-        <div className="absolute top-0 right-2 w-5 h-full bg-red-600 flex items-center justify-center">
-          <span className="text-white text-[9px] font-bold" style={{ writingMode: 'vertical-rl' }}>PRIO</span>
-        </div>
-      )}
-      {hasExpress && (
-        <div className="absolute top-1/2 right-10 transform -translate-y-1/2 opacity-20 pointer-events-none">
-          <svg className="w-8 h-8 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
-          </svg>
-        </div>
-      )}
-      <div className="flex flex-col gap-1">
-        <span className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{machine.modelo}</span>
-        <span className={`text-sm font-mono font-bold ${isDark ? 'text-white' : 'text-black'}`}>{machine.serie}</span>
-        <div className="flex flex-wrap gap-1 mt-1">
-          {machine.recondicao?.bronze && <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-700 text-white font-bold">BRZ</span>}
-          {machine.recondicao?.prata && <span className="text-[9px] px-1.5 py-0.5 rounded bg-gray-500 text-white font-bold">PRT</span>}
-        </div>
-        {otherTasks.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-1">
-            {otherTasks.map((tarefa, idx) => (
-              <span key={idx} className="text-[9px] px-1.5 py-0.5 rounded bg-gray-700 text-white font-medium">{tarefa.texto}</span>
-            ))}
-          </div>
-        )}
-        <div className="flex items-center gap-2 mt-1">
-          {hasHistory && <Repeat className="w-3 h-3 text-blue-500" title="Máquina já foi registrada anteriormente" />}
-          {machine.aguardaPecas && <Clock className="w-3 h-3 text-yellow-500" />}
-        </div>
-
-        {/* ── Timer ao vivo no minicard ── */}
-        {(timerAtivo || timerPausado || timerDone) && timerElapsed !== null && (
-          <div className="mt-1.5" onClick={e => e.stopPropagation()}>
-            {timerAtivo && !timerPausado && (
-              <div className="flex items-center gap-1.5 font-mono">
-                <span className="relative flex h-2 w-2 flex-shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                </span>
-                <span className="text-xs font-black text-emerald-500 tabular-nums tracking-wide">
-                  {formatDuration(timerElapsed)}
-                </span>
-                <span className="text-[9px] text-slate-400">em curso</span>
-              </div>
-            )}
-            {timerPausado && (
-              <div className="flex items-center gap-1.5 font-mono">
-                <span className="w-2 h-2 rounded-full bg-yellow-400 flex-shrink-0" />
-                <span className="text-xs font-black text-yellow-500 tabular-nums">
-                  {formatDuration(timerElapsed)}
-                </span>
-                <span className="text-[9px] text-slate-400">pausado</span>
-              </div>
-            )}
-            {timerDone && (
-              <div className="flex items-center gap-1.5 font-mono">
-                <Clock className="w-3 h-3 text-emerald-400 flex-shrink-0" />
-                <span className="text-xs font-bold text-emerald-400 tabular-nums">
-                  {formatDuration(timerElapsed)}
-                </span>
-              </div>
-            )}
-          </div>
-        )}
+      {/* modelo */}
+      <div style={{ fontSize: '10px', color: textSub, fontWeight: 500, marginBottom: '1px', display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+        <span>{machine.modelo}</span>
+        {hasExpress && <span style={{ fontSize: '9px', fontWeight: 700, padding: '0 4px', borderRadius: '3px', background: 'rgba(245,158,11,0.12)', color: '#F59E0B', fontFamily: 'monospace' }}>EXPRESS</span>}
+        {machine.prioridade && <span style={{ fontSize: '9px', fontWeight: 700, padding: '0 4px', borderRadius: '3px', background: 'rgba(239,68,68,0.12)', color: '#EF4444', fontFamily: 'monospace' }}>PRIO</span>}
+        {hasHistory && <Repeat style={{ width: '9px', height: '9px', color: '#3B82F6' }} />}
+        {machine.aguardaPecas && <Clock style={{ width: '9px', height: '9px', color: '#F59E0B' }} />}
       </div>
+      {/* série */}
+      <div style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: 700, color: textMain, letterSpacing: '0.04em', marginBottom: '3px' }}>{machine.serie}</div>
+      {/* tarefas */}
+      {otherTasks.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px', marginBottom: '3px' }}>
+          {otherTasks.map((t, i) => (
+            <span key={i} style={{ fontSize: '9px', fontWeight: 600, padding: '0 4px', borderRadius: '3px', background: isDark ? '#1F2937' : '#F3F4F6', color: textSub, fontFamily: 'monospace' }}>{t.texto}</span>
+          ))}
+        </div>
+      )}
+      {/* timer */}
+      {(timerAtivo || timerPausado || timerDone) && timerElapsed !== null && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '3px' }} onClick={e => e.stopPropagation()}>
+          {timerAtivo && !timerPausado && (
+            <>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22C55E', display: 'inline-block' }} />
+              <span style={{ fontSize: '10px', fontFamily: 'monospace', fontWeight: 700, color: '#22C55E', letterSpacing: '0.04em' }}>{formatDuration(timerElapsed)}</span>
+              <span style={{ fontSize: '9px', color: textSub }}>em curso</span>
+            </>
+          )}
+          {timerPausado && (
+            <>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#F59E0B', display: 'inline-block' }} />
+              <span style={{ fontSize: '10px', fontFamily: 'monospace', fontWeight: 700, color: '#F59E0B' }}>{formatDuration(timerElapsed)}</span>
+              <span style={{ fontSize: '9px', color: textSub }}>pausado</span>
+            </>
+          )}
+          {timerDone && (
+            <>
+              <Clock style={{ width: '10px', height: '10px', color: '#4ADE80' }} />
+              <span style={{ fontSize: '10px', fontFamily: 'monospace', fontWeight: 700, color: '#4ADE80' }}>{formatDuration(timerElapsed)}</span>
+            </>
+          )}
+        </div>
+      )}
     </button>
   );
 };
@@ -821,18 +813,16 @@ export default function Dashboard() {
           <DragDropContext onDragEnd={handleDragEnd}>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
               {/* A FAZER */}
-              <div className={`overflow-hidden clip-corner-top border-2 ${isDarkMode ? 'bg-gray-950 border-red-600' : 'bg-white border-red-600'}`}>
-                <div className={`p-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Wrench className={`w-5 h-5 ${isDarkMode ? 'text-white' : 'text-red-600'}`} />
-                      <h3 className={`text-base font-bold tracking-wide ${isDarkMode ? 'text-white' : 'text-black'}`}>A FAZER</h3>
-                      <span className={`px-2.5 py-0.5 text-xs font-bold clip-corner ${isDarkMode ? 'bg-white text-black' : 'bg-black text-white'}`}>{aFazerMachines.length} ATIVOS</span>
-                    </div>
-                    <button onClick={() => setShowAFazerFullscreen(true)} className={`p-1.5 clip-corner ${isDarkMode ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-200 hover:bg-gray-300'}`}>
-                      <Maximize2 className={`w-4 h-4 ${isDarkMode ? 'text-white' : 'text-black'}`} />
-                    </button>
+              <div style={{ background: isDarkMode ? '#0F172A' : '#FFFFFF', border: isDarkMode ? '1px solid #1E293B' : '1px solid #E2E8F0', borderTop: '2px solid #EF4444', borderRadius: '8px', overflow: 'hidden' }}>
+                <div style={{ padding: '12px 16px', borderBottom: isDarkMode ? '1px solid #1E293B' : '1px solid #F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Wrench style={{ width: '14px', height: '14px', color: '#EF4444', flexShrink: 0 }} />
+                    <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: isDarkMode ? '#F1F5F9' : '#0F172A', fontFamily: 'Inter, sans-serif' }}>A FAZER</span>
+                    <span style={{ fontSize: '11px', fontWeight: 700, fontFamily: 'monospace', padding: '1px 8px', borderRadius: '20px', background: 'rgba(239,68,68,0.1)', color: '#EF4444' }}>{aFazerMachines.length}</span>
                   </div>
+                  <button onClick={() => setShowAFazerFullscreen(true)} style={{ padding: '4px', borderRadius: '4px', background: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', border: 'none', cursor: 'pointer' }}>
+                    <Maximize2 style={{ width: '14px', height: '14px', color: isDarkMode ? '#94A3B8' : '#64748B' }} />
+                  </button>
                 </div>
                 <Droppable droppableId="a-fazer">
                   {(provided) => (
@@ -853,18 +843,16 @@ export default function Dashboard() {
               </div>
 
               {/* CONCLUÍDA */}
-              <div className={`overflow-hidden clip-corner-top border-2 ${isDarkMode ? 'bg-gray-950 border-green-600' : 'bg-white border-green-600'}`}>
-                <div className={`p-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <CheckCircle2 className="w-5 h-5 text-green-400" />
-                      <h3 className={`text-base font-bold tracking-wide ${isDarkMode ? 'text-white' : 'text-black'}`}>CONCLUÍDA</h3>
-                      <span className={`px-2.5 py-0.5 text-xs font-bold clip-corner ${isDarkMode ? 'bg-white text-black' : 'bg-black text-white'}`}>TOTAL: {allConcluidaMachines.length}</span>
-                    </div>
-                    <button onClick={() => setShowConcluidaFullscreen(true)} className={`p-1.5 clip-corner ${isDarkMode ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-200 hover:bg-gray-300'}`}>
-                      <Maximize2 className={`w-4 h-4 ${isDarkMode ? 'text-white' : 'text-black'}`} />
-                    </button>
+              <div style={{ background: isDarkMode ? '#0F172A' : '#FFFFFF', border: isDarkMode ? '1px solid #1E293B' : '1px solid #E2E8F0', borderTop: '2px solid #22C55E', borderRadius: '8px', overflow: 'hidden' }}>
+                <div style={{ padding: '12px 16px', borderBottom: isDarkMode ? '1px solid #1E293B' : '1px solid #F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <CheckCircle2 style={{ width: '14px', height: '14px', color: '#22C55E', flexShrink: 0 }} />
+                    <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: isDarkMode ? '#F1F5F9' : '#0F172A', fontFamily: 'Inter, sans-serif' }}>CONCLUÍDA</span>
+                    <span style={{ fontSize: '11px', fontWeight: 700, fontFamily: 'monospace', padding: '1px 8px', borderRadius: '20px', background: 'rgba(34,197,94,0.1)', color: '#22C55E' }}>{allConcluidaMachines.length}</span>
                   </div>
+                  <button onClick={() => setShowConcluidaFullscreen(true)} style={{ padding: '4px', borderRadius: '4px', background: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', border: 'none', cursor: 'pointer' }}>
+                    <Maximize2 style={{ width: '14px', height: '14px', color: isDarkMode ? '#94A3B8' : '#64748B' }} />
+                  </button>
                 </div>
                 <Droppable droppableId="concluida-geral">
                   {(provided) => (
@@ -875,15 +863,19 @@ export default function Dashboard() {
                             <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} style={{ ...provided.draggableProps.style }}>
                               <button
                                 onClick={() => { setSelectedMachine(machine); setShowObsModal(true); }}
-                                className={`w-full text-left p-3 rounded border-l-4 transition-all ${isDarkMode ? 'bg-gray-900 hover:bg-gray-800' : 'bg-white hover:bg-gray-50 border-gray-200'}`}
-                                style={{ borderLeftColor: machine.tecnico ? TECHNICIANS.find(t => t.id === machine.tecnico)?.borderColor : '#10b981' }}
+                                style={{
+                                  width: '100%', textAlign: 'left', cursor: 'pointer',
+                                  background: isDarkMode ? '#111827' : '#FFFFFF',
+                                  border: isDarkMode ? '1px solid #1F2937' : '1px solid #E5E7EB',
+                                  borderLeft: `3px solid ${machine.tecnico ? TECHNICIANS.find(t => t.id === machine.tecnico)?.borderColor : '#22C55E'}`,
+                                  borderRadius: '6px', padding: '8px 10px', marginBottom: '4px',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px',
+                                }}
                               >
-                                <div className="flex items-center justify-between">
-                                  <span className={`text-sm font-mono font-bold ${isDarkMode ? 'text-white' : 'text-black'}`}>{machine.serie}</span>
-                                  <div className="flex items-center gap-2">
-                                    <span className={`text-xs uppercase ${isDarkMode ? 'text-gray-500' : 'text-gray-600'}`}>{machine.tecnico ? `CONCLUÍDO ${machine.tecnico}`.toUpperCase() : 'CONCLUÍDO'}</span>
-                                    <CheckCircle2 className="w-4 h-4 text-green-500" />
-                                  </div>
+                                <span style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: 700, color: isDarkMode ? '#F9FAFB' : '#111827', letterSpacing: '0.04em' }}>{machine.serie}</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0 }}>
+                                  <span style={{ fontSize: '9px', color: isDarkMode ? '#4B5563' : '#9CA3AF', fontFamily: 'monospace', textTransform: 'uppercase' }}>{machine.tecnico || ''}</span>
+                                  <CheckCircle2 style={{ width: '12px', height: '12px', color: '#22C55E' }} />
                                 </div>
                               </button>
                             </div>
@@ -909,12 +901,14 @@ export default function Dashboard() {
                 const statusColor = emPreparacao.length === 0 ? 'text-gray-500' : emPreparacao.some(m => m.estado.includes('em-preparacao')) ? 'text-cyan-600' : 'text-yellow-600';
 
                 return (
-                  <div key={tech.id} className={`overflow-hidden border-2 clip-corner-top ${isDarkMode ? 'bg-gray-950' : 'bg-white'}`} style={{ borderColor: tech.borderColor }}>
-                    <div className="h-2" style={{ backgroundColor: tech.borderColor }}></div>
-                    <div className="p-4 pb-3">
-                      <div className="flex items-center gap-2 mb-2">
-                        <UserIcon className="w-5 h-5" style={{ color: tech.borderColor }} />
-                        <h4 className={`text-sm font-bold tracking-wide ${isDarkMode ? 'text-white' : 'text-black'}`}>{tech.name}</h4>
+                  <div key={tech.id} style={{ background: isDarkMode ? '#0F172A' : '#FFFFFF', border: isDarkMode ? '1px solid #1E293B' : '1px solid #E2E8F0', borderTop: `2px solid ${tech.borderColor}`, borderRadius: '8px', overflow: 'hidden' }}>
+                    <div style={{ padding: '10px 12px 8px', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: isDarkMode ? '1px solid #1E293B' : '1px solid #F1F5F9' }}>
+                      <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: tech.borderColor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <span style={{ fontSize: '11px', fontWeight: 700, color: 'white', fontFamily: 'monospace' }}>{tech.name.charAt(0)}</span>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em', color: isDarkMode ? '#F1F5F9' : '#0F172A', fontFamily: 'Inter, sans-serif' }}>{tech.name}</div>
+                        <div style={{ fontSize: '9px', color: isDarkMode ? '#475569' : '#94A3B8', fontFamily: 'monospace' }}>TÉCNICO</div>
                       </div>
                     </div>
 
