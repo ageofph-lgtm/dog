@@ -842,46 +842,27 @@ export default function Dashboard() {
         .mini-scroll::-webkit-scrollbar-thumb { background: rgba(74,74,122,0.5); }
       `}</style>
 
-      {/* ══ HERO ══════════════════════════════════════════════════════════ */}
+      {/* ══ NAVBAR COMPACTA ══════════════════════════════════════════════ */}
       <div style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
-        padding: '16px 0 12px',
-        position: 'relative',
-        marginBottom: '12px',
+        display: 'flex', alignItems: 'center', gap: '10px',
+        padding: '10px 0 10px',
+        marginBottom: '10px',
+        borderBottom: `1px solid ${D.border}`,
       }}>
-        {/* aura glow */}
-        <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '180px', height: '120px', background: 'radial-gradient(ellipse, rgba(255,45,120,0.09) 0%, transparent 70%)', pointerEvents: 'none' }} />
-
-        <img src="https://media.base44.com/images/public/69c166ad19149fb0c07883cb/a35751fd9_Gemini_Generated_Image_scmohbscmohbscmo1.png"
+        <img
+          src="https://media.base44.com/images/public/69c166ad19149fb0c07883cb/a35751fd9_Gemini_Generated_Image_scmohbscmohbscmo1.png"
           alt="WATCHER"
-          style={{
-            width: '96px', height: '96px', objectFit: 'contain', position: 'relative',
-            filter: 'drop-shadow(0 0 14px rgba(255,45,120,0.55)) drop-shadow(0 0 28px rgba(77,159,255,0.18))',
-          }}
+          style={{ width: '36px', height: '36px', objectFit: 'contain', flexShrink: 0,
+            filter: 'drop-shadow(0 0 8px rgba(255,45,120,0.6))' }}
         />
-        {/* [WATCHER] com colchetes neon */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
-          <span style={{
-            fontFamily: 'monospace', fontSize: '17px', fontWeight: 900,
-            color: D.pink,
-            textShadow: `0 0 8px ${D.pink}, 0 0 20px ${D.pink}, 0 0 40px rgba(255,45,120,0.4)`,
-            letterSpacing: '0.02em',
-          }}>[</span>
-          <span style={{
-            fontFamily: 'monospace', fontSize: '17px', fontWeight: 900,
-            letterSpacing: '0.22em',
-            color: isDarkMode ? '#F0F0FF' : '#0A0A1A',
-            textShadow: isDarkMode ? '0 0 16px rgba(255,45,120,0.25)' : 'none',
-          }}>WATCHER</span>
-          <span style={{
-            fontFamily: 'monospace', fontSize: '17px', fontWeight: 900,
-            color: D.pink,
-            textShadow: `0 0 8px ${D.pink}, 0 0 20px ${D.pink}, 0 0 40px rgba(255,45,120,0.4)`,
-            letterSpacing: '0.02em',
-          }}>]</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+          <span style={{ fontFamily: 'monospace', fontSize: '15px', fontWeight: 900, color: D.pink,
+            textShadow: `0 0 8px ${D.pink}` }}>[</span>
+          <span style={{ fontFamily: 'monospace', fontSize: '15px', fontWeight: 900, letterSpacing: '0.18em',
+            color: D.text }}>WATCHER</span>
+          <span style={{ fontFamily: 'monospace', fontSize: '15px', fontWeight: 900, color: D.pink,
+            textShadow: `0 0 8px ${D.pink}` }}>]</span>
         </div>
-        {/* linha neon */}
-        <div style={{ marginTop: '8px', width: '300px', height: '1px', background: `linear-gradient(90deg, transparent, ${D.pink}, ${D.blue}, transparent)`, opacity: 0.3 }} />
       </div>
 
       {/* ══ TOOLBAR ════════════════════════════════════════════════════════ */}
