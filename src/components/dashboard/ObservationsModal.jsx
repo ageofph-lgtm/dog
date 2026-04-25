@@ -52,10 +52,11 @@ export default function ObservationsModal({
       border: 'none', cursor: 'pointer'
     }),
     section: {
-      padding: '12px', borderRadius: '10px',
-      border: `1px solid ${isDark ? '#2A2A50' : '#E2E2F0'}`,
-      background: isDark ? '#13132A' : '#F8F8FF',
-      marginBottom: '12px'
+      padding: '12px', borderRadius: '8px',
+      border: isDark ? '1px solid rgba(255,45,120,0.12)' : `1px solid #E2E2F0`,
+      background: isDark ? 'linear-gradient(135deg, #0E0E1E 0%, #121228 100%)' : '#F8F8FF',
+      marginBottom: '12px',
+      boxShadow: isDark ? 'inset 0 0 0 1px rgba(255,255,255,0.02)' : 'none',
     },
     label: {
       fontSize: '10px', fontWeight: 700, fontFamily: 'monospace',
@@ -192,13 +193,14 @@ export default function ObservationsModal({
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 9998, backdropFilter: 'blur(4px)' }} />
 
       {/* MODAL */}
-      <div style={{ position: 'fixed', top: '60px', left: '50%', transform: 'translateX(-50%)', width: '95%', maxWidth: '860px', maxHeight: 'calc(100vh - 80px)', display: 'flex', flexDirection: 'column', borderRadius: '14px', zIndex: 9999, background: C.bg, border: `1px solid ${C.border}`, boxShadow: isDark ? '0 24px 80px rgba(0,0,0,0.85), 0 0 40px rgba(255,45,120,0.08)' : '0 24px 60px rgba(0,0,0,0.18)', overflow: 'hidden' }}>
+      <div style={{ position: 'fixed', top: 'clamp(0px, 5vh, 60px)', left: '50%', transform: 'translateX(-50%)', width: 'min(95vw, 860px)', maxHeight: 'calc(100dvh - clamp(0px, 10vh, 80px))', display: 'flex', flexDirection: 'column', borderRadius: 'clamp(0px, 3vw, 14px)', zIndex: 9999, background: isDark ? 'linear-gradient(160deg, #09090F 0%, #0D0D1E 100%)' : C.bg, border: isDark ? '1px solid rgba(255,45,120,0.2)' : `1px solid ${C.border}`, boxShadow: isDark ? '0 24px 80px rgba(0,0,0,0.95), 0 0 60px rgba(255,45,120,0.12), inset 0 0 0 1px rgba(255,255,255,0.025)' : '0 24px 60px rgba(0,0,0,0.18)', overflow: 'hidden' }}>
 
         {/* CLOSE */}
         <button onClick={onClose} style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 10, width: '28px', height: '28px', borderRadius: '50%', background: isDark ? '#1C1C35' : '#F0F0F8', border: `1px solid ${C.border}`, cursor: 'pointer', color: C.muted, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>✕</button>
 
         {/* HEADER */}
-        <div style={{ padding: '18px 20px 14px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+        <div style={{ padding: '16px 20px 12px', borderBottom: isDark ? '1px solid rgba(255,45,120,0.15)' : `1px solid ${C.border}`, flexShrink: 0, background: isDark ? 'linear-gradient(90deg, rgba(255,45,120,0.06) 0%, transparent 60%)' : 'transparent', position: 'relative' }}>
+          {isDark && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: 'linear-gradient(90deg, #FF2D78 0%, #4D9FFF 100%)', opacity: 0.8 }} />}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
             <span style={{ fontFamily: 'monospace', fontSize: '22px', fontWeight: 900, color: C.text }}>{localMachine.serie}</span>
             {localMachine.prioridade && <AlertTriangle size={16} color={C.orange} />}

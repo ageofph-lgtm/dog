@@ -842,106 +842,166 @@ export default function Dashboard() {
 
   // ── Helpers de UI ─────────────────────────────────────────────────────────
   const D = {
-    panel:  isDarkMode ? '#0E0E1C' : '#FFFFFF',
-    border: isDarkMode ? '#1A1A2E' : '#E0E0F0',
-    text:   isDarkMode ? '#F0F0FF' : '#0A0A1A',
-    muted:  isDarkMode ? '#4A4A7A' : '#8080A0',
+    panel:  isDarkMode ? '#08080F' : '#F2F3F8',
+    panel2: isDarkMode ? '#0D0D1C' : '#EAECF4',
+    border: isDarkMode ? '#16162A' : '#C8CADC',
+    borderHi: isDarkMode ? 'rgba(255,45,120,0.45)' : 'rgba(255,45,120,0.3)',
+    text:   isDarkMode ? '#E4E6FF' : '#0B0C18',
+    muted:  isDarkMode ? '#4A4A80' : '#666888',
     pink:   '#FF2D78',
     blue:   '#4D9FFF',
     purple: '#9B5CF6',
     green:  '#22C55E',
+    amber:  '#F59E0B',
+    navBg:  isDarkMode ? 'rgba(6,6,13,0.98)' : 'rgba(232,234,245,0.97)',
   };
 
   const panel = (accent, glow = false) => ({
-    background: D.panel,
-    border: `1px solid ${D.border}`,
+    background: isDarkMode
+      ? `linear-gradient(160deg, #09091500 0%, #0D0D1E 100%)`
+      : D.panel,
+    border: `1px solid ${isDarkMode ? accent + '28' : D.border}`,
     borderTop: `2px solid ${accent}`,
-    borderRadius: '10px',
+    borderRadius: '8px',
     overflow: 'hidden',
+    position: 'relative',
     boxShadow: isDarkMode
-      ? `0 0 ${glow ? '28px' : '12px'} ${accent}${glow ? '22' : '0A'}, 0 4px 24px rgba(0,0,0,0.5)`
-      : '0 2px 12px rgba(0,0,0,0.07)',
+      ? `0 0 ${glow ? '40px' : '18px'} ${accent}${glow ? '28' : '12'}, 0 4px 32px rgba(0,0,0,0.7), inset 0 0 0 1px rgba(255,255,255,0.02)`
+      : `0 2px 16px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)`,
   });
 
   const hdr = (accent) => ({
     padding: '10px 14px',
-    borderBottom: `1px solid ${D.border}`,
-    background: isDarkMode ? `${accent}09` : `${accent}04`,
+    borderBottom: `1px solid ${isDarkMode ? accent + '20' : D.border}`,
+    background: isDarkMode
+      ? `linear-gradient(90deg, ${accent}14 0%, transparent 80%)`
+      : `linear-gradient(90deg, ${accent}08 0%, transparent 80%)`,
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    position: 'relative',
   });
 
   const badge = (color, val) => (
     <span style={{ fontSize: '10px', fontWeight: 700, fontFamily: 'monospace', padding: '1px 8px', borderRadius: '20px', background: `${color}18`, color, border: `1px solid ${color}35` }}>{val}</span>
   );
 
-  const scroll = (maxH) => ({ padding: '8px', overflowY: 'auto', maxHeight: maxH, minHeight: '40px' });
+  const scroll = (maxH) => ({ padding: '6px 8px', overflowY: 'auto', maxHeight: maxH, minHeight: '40px' });
 
   return (
-    <div style={{ minHeight: '100vh', padding: '0 16px 48px' }}>
+    <div style={{ minHeight: '100vh', padding: '0 0 60px', overflowX: 'hidden', maxWidth: '100vw' }}>
       <style>{`
-        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar { width: 3px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,45,120,0.45); border-radius: 2px; }
-        .mini-scroll::-webkit-scrollbar-thumb { background: rgba(74,74,122,0.5); }
+        ::-webkit-scrollbar-thumb { background: rgba(255,45,120,0.5); border-radius: 2px; }
+        .mini-scroll::-webkit-scrollbar { width: 2px; }
+        .mini-scroll::-webkit-scrollbar-thumb { background: rgba(74,74,130,0.5); }
+        @media (max-width: 600px) {
+          .kanban-grid { grid-template-columns: 1fr !important; }
+          .kanban-row { flex-direction: column !important; }
+        }
       `}</style>
 
-      {/* ══ HERO STICKY — só logo + título, nunca desaparece ═══════════ */}
+      {/* ══ HERO STICKY ════════════════════════════════════════════════ */}
       <div style={{
         position: 'sticky', top: 0, zIndex: 90,
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
-        padding: '18px 16px 14px',
-        background: isDarkMode ? 'rgba(9,9,15,0.97)' : 'rgba(244,244,255,0.97)',
-        backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
-        borderBottom: `1px solid ${D.border}`,
-        marginLeft: '-16px', marginRight: '-16px',
+        background: isDarkMode
+          ? 'linear-gradient(180deg, rgba(6,6,13,0.99) 0%, rgba(8,8,15,0.96) 100%)'
+          : 'linear-gradient(180deg, rgba(228,230,240,0.99) 0%, rgba(232,234,245,0.96) 100%)',
+        backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+        borderBottom: `1px solid ${isDarkMode ? 'rgba(255,45,120,0.2)' : 'rgba(255,45,120,0.15)'}`,
       }}>
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: `linear-gradient(90deg, transparent, ${D.pink} 30%, ${D.blue} 70%, transparent)` }} />
-        <img
-          src="https://media.base44.com/images/public/69c166ad19149fb0c07883cb/a35751fd9_Gemini_Generated_Image_scmohbscmohbscmo1.png"
-          alt="WATCHER"
-          style={{ width: '80px', height: '80px', objectFit: 'contain',
-            filter: 'drop-shadow(0 0 18px rgba(255,45,120,0.7)) drop-shadow(0 0 32px rgba(77,159,255,0.25))' }}
-        />
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '6px' }}>
-          <span style={{ fontFamily: 'monospace', fontSize: '20px', fontWeight: 900, color: D.pink, textShadow: `0 0 16px ${D.pink}` }}>[</span>
-          <span style={{ fontFamily: 'monospace', fontSize: '20px', fontWeight: 900, letterSpacing: '0.22em', color: D.text }}>WATCHER</span>
-          <span style={{ fontFamily: 'monospace', fontSize: '20px', fontWeight: 900, color: D.pink, textShadow: `0 0 16px ${D.pink}` }}>]</span>
+        {/* Top accent linha */}
+        <div style={{ height: '2px', background: `linear-gradient(90deg, transparent 0%, ${D.pink} 25%, ${D.blue} 75%, transparent 100%)`, opacity: isDarkMode ? 1 : 0.6 }} />
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', gap: '12px' }}>
+          {/* Logo + Title */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+            <div style={{ position: 'relative', flexShrink: 0 }}>
+              <img
+                src="https://media.base44.com/images/public/69c166ad19149fb0c07883cb/a35751fd9_Gemini_Generated_Image_scmohbscmohbscmo1.png"
+                alt="WATCHER"
+                style={{ width: '44px', height: '44px', objectFit: 'contain',
+                  filter: isDarkMode
+                    ? 'drop-shadow(0 0 12px rgba(255,45,120,0.8)) drop-shadow(0 0 4px rgba(255,45,120,0.5))'
+                    : 'drop-shadow(0 0 6px rgba(255,45,120,0.5))' }}
+              />
+              {/* Pulse ring */}
+              {isDarkMode && <div style={{ position: 'absolute', inset: '-4px', borderRadius: '50%', border: '1px solid rgba(255,45,120,0.3)', animation: 'cyber-pulse 2s ease-in-out infinite' }} />}
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '3px' }}>
+                <span style={{ fontFamily: "'Orbitron', monospace", fontSize: '18px', fontWeight: 900, letterSpacing: '0.18em', color: D.pink, textShadow: isDarkMode ? `0 0 16px rgba(255,45,120,0.8), 0 0 32px rgba(255,45,120,0.4)` : 'none' }}>WAT</span>
+                <span style={{ fontFamily: "'Orbitron', monospace", fontSize: '18px', fontWeight: 900, letterSpacing: '0.18em', color: D.text }}>CHER</span>
+              </div>
+              <div style={{ fontFamily: 'monospace', fontSize: '8px', color: D.muted, letterSpacing: '0.14em', marginTop: '1px' }}>
+                JORDAN PROTOCOL · v2.0
+              </div>
+            </div>
+          </div>
+
+          {/* Right: stats rápidos */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+              <div style={{ fontFamily: 'monospace', fontSize: '10px', color: D.muted, letterSpacing: '0.06em' }}>
+                <span style={{ color: D.green, fontWeight: 700 }}>{machines.filter(m => !m.arquivada && m.estado?.startsWith('em-preparacao')).length}</span>
+                <span style={{ opacity: 0.6 }}> WIP</span>
+              </div>
+              <div style={{ fontFamily: 'monospace', fontSize: '10px', color: D.muted, letterSpacing: '0.06em' }}>
+                <span style={{ color: D.pink, fontWeight: 700 }}>{machines.filter(m => !m.arquivada && m.estado === 'a-fazer').length}</span>
+                <span style={{ opacity: 0.6 }}> FILA</span>
+              </div>
+            </div>
+            {/* Status dot */}
+            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: D.green, boxShadow: `0 0 10px ${D.green}, 0 0 4px ${D.green}`, animation: 'dot-blink 1.4s ease-in-out infinite' }} />
+          </div>
         </div>
-        <div style={{ marginTop: '8px', width: '180px', height: '1px', background: `linear-gradient(90deg, transparent, ${D.pink}, ${D.blue}, transparent)`, opacity: 0.5 }} />
       </div>
 
       {/* ══ TOOLBAR ADMIN — separada do logo, rola com a página ════════ */}
       {(userPermissions?.canCreateMachine || userPermissions?.canDeleteMachine) && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', justifyContent: 'center', padding: '14px 16px', borderBottom: `1px solid ${D.border}`, marginLeft: '-16px', marginRight: '-16px', background: isDarkMode ? 'rgba(9,9,15,0.6)' : 'rgba(244,244,255,0.6)' }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap',
+          justifyContent: 'center', padding: '10px 16px',
+          borderBottom: `1px solid ${D.border}`,
+          background: isDarkMode ? 'rgba(8,8,14,0.8)' : 'rgba(230,232,242,0.8)',
+          backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+        }}>
           {userPermissions?.canDeleteMachine && (
             <button
               onPointerDown={(e) => { e.stopPropagation(); setShowBackupManager(true); }}
-              style={{ padding: '7px 16px', background: isDarkMode ? '#1A1A2E' : '#F0F0F8', color: D.muted, border: `1px solid ${D.border}`, borderRadius: '7px', fontFamily: 'monospace', fontSize: '11px', fontWeight: 700, cursor: 'pointer', position: 'relative', zIndex: 50 }}>
-              BACKUP
+              style={{ padding: '6px 14px', background: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)', color: D.muted, border: `1px solid ${D.border}`, borderRadius: '5px', fontFamily: 'monospace', fontSize: '10px', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.08em', position: 'relative', zIndex: 50 }}>
+              ◈ BACKUP
             </button>
           )}
           {userPermissions?.canCreateMachine && (<>
             <button
               onPointerDown={(e) => { e.stopPropagation(); setShowBulkCreateModal(true); }}
-              style={{ padding: '7px 16px', background: 'rgba(77,159,255,0.12)', color: D.blue, border: `1px solid rgba(77,159,255,0.4)`, borderRadius: '7px', fontFamily: 'monospace', fontSize: '11px', fontWeight: 700, cursor: 'pointer', position: 'relative', zIndex: 50 }}>
-              + MASSIVA
+              style={{ padding: '6px 14px', background: isDarkMode ? 'rgba(77,159,255,0.08)' : 'rgba(77,159,255,0.1)', color: D.blue, border: `1px solid rgba(77,159,255,0.35)`, borderRadius: '5px', fontFamily: 'monospace', fontSize: '10px', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.08em', position: 'relative', zIndex: 50 }}>
+              ▦ MASSIVA
             </button>
             <button
               onPointerDown={(e) => { e.stopPropagation(); setShowImageModal(true); }}
-              style={{ padding: '7px 16px', background: 'rgba(155,92,246,0.12)', color: D.purple, border: `1px solid rgba(155,92,246,0.4)`, borderRadius: '7px', fontFamily: 'monospace', fontSize: '11px', fontWeight: 700, cursor: 'pointer', position: 'relative', zIndex: 50 }}>
-              IA FOTO
+              style={{ padding: '6px 14px', background: isDarkMode ? 'rgba(155,92,246,0.08)' : 'rgba(155,92,246,0.1)', color: D.purple, border: `1px solid rgba(155,92,246,0.35)`, borderRadius: '5px', fontFamily: 'monospace', fontSize: '10px', fontWeight: 700, cursor: 'pointer', letterSpacing: '0.08em', position: 'relative', zIndex: 50 }}>
+              ◎ IA FOTO
             </button>
             <button
               onPointerDown={(e) => { e.stopPropagation(); setPrefillData(null); setShowCreateModal(true); }}
-              style={{ padding: '7px 20px', background: `linear-gradient(135deg, ${D.pink}, ${D.purple})`, color: '#fff', border: 'none', borderRadius: '7px', fontFamily: 'monospace', fontSize: '11px', fontWeight: 700, cursor: 'pointer', boxShadow: `0 0 14px rgba(255,45,120,0.45)`, position: 'relative', zIndex: 50 }}>
-              + NOVA
+              style={{
+                padding: '6px 18px',
+                background: `linear-gradient(135deg, ${D.pink} 0%, #9B1FE8 100%)`,
+                color: '#fff', border: `1px solid rgba(255,45,120,0.6)`,
+                borderRadius: '5px', fontFamily: 'monospace', fontSize: '10px', fontWeight: 700,
+                cursor: 'pointer', letterSpacing: '0.1em',
+                boxShadow: isDarkMode ? `0 0 18px rgba(255,45,120,0.5), 0 0 6px rgba(255,45,120,0.3)` : `0 2px 8px rgba(255,45,120,0.3)`,
+                position: 'relative', zIndex: 50,
+              }}>
+              ＋ NOVA
             </button>
           </>)}
         </div>
       )}
 
             {/* ══ TOOLBAR SECUNDÁRIA — notificações e multi-select ═══════════ */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', marginBottom: '10px', position: 'relative', zIndex: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', marginBottom: '6px', position: 'relative', zIndex: 10, padding: '8px 16px 0' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
           <PedidosPanel userPermissions={userPermissions} isCompact={true} />
           {userPermissions?.canDeleteMachine && <OSNotificationsPanel userPermissions={userPermissions} />}
@@ -953,10 +1013,30 @@ export default function Dashboard() {
       </div>
 
       {/* Search */}
-      <div style={{ position: 'relative', maxWidth: '380px', marginBottom: '16px' }}>
-        <Search style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', width: '13px', height: '13px', color: D.muted }} />
-        <input type="text" placeholder="BUSCAR MÁQUINA..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-          style={{ width: '100%', padding: '8px 12px 8px 30px', background: D.panel, border: `1px solid ${D.border}`, borderRadius: '8px', fontFamily: 'monospace', fontSize: '11px', color: D.text, outline: 'none', boxSizing: 'border-box' }} />
+      <div style={{ padding: '10px 16px 4px', maxWidth: '480px' }}>
+        <div style={{ position: 'relative' }}>
+          <Search style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', width: '12px', height: '12px', color: D.muted, pointerEvents: 'none' }} />
+          <input
+            type="text"
+            placeholder="BUSCAR SÉRIE / MODELO..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              width: '100%', padding: '9px 12px 9px 32px',
+              background: isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)',
+              border: `1px solid ${searchQuery ? 'rgba(255,45,120,0.6)' : D.border}`,
+              borderRadius: '6px',
+              fontFamily: 'monospace', fontSize: '11px', color: D.text,
+              outline: 'none', boxSizing: 'border-box',
+              letterSpacing: '0.06em',
+              transition: 'border-color 0.15s',
+              boxShadow: searchQuery && isDarkMode ? '0 0 12px rgba(255,45,120,0.2)' : 'none',
+            }}
+          />
+          {searchQuery && (
+            <button onPointerDown={() => setSearchQuery('')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: D.muted, fontSize: '14px', padding: '2px', lineHeight: 1 }}>×</button>
+          )}
+        </div>
       </div>
 
       {/* ══ SEARCH ══════════════════════════════════════════════════════════ */}
@@ -973,7 +1053,7 @@ export default function Dashboard() {
           {!isAdmin && myTech && (<>
 
             {/* ROW 1 — MEU QUADRO + A FAZER dominam, lado a lado */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+            <div className="kanban-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px', padding: '0 16px' }}>
 
               {/* MEU QUADRO */}
               <div style={{ ...panel(myTech.borderColor, true) }}>
@@ -1047,7 +1127,7 @@ export default function Dashboard() {
             </div>
 
             {/* ROW 2 — CONCLUÍDA */}
-            <div style={{ ...panel(D.green), marginBottom: '12px' }}>
+            <div style={{ ...panel(D.green), marginBottom: '10px', marginLeft: '16px', marginRight: '16px' }}>
               <div style={{ ...hdr(D.green) }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <CheckCircle2 style={{ width: '13px', height: '13px', color: D.green }} />
@@ -1059,7 +1139,7 @@ export default function Dashboard() {
               <Droppable droppableId="concluida-geral">
                 {(provided) => (
                   <div ref={provided.innerRef} {...provided.droppableProps}
-                    style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '6px', padding: '10px', maxHeight: '220px', overflowY: 'auto' }}>
+                    style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '6px', padding: '8px', maxHeight: '220px', overflowY: 'auto' }}>
                     {allConcluidaMachines.map((machine, index) => {
                       const tc = TECHNICIANS.find(t => t.id === machine.tecnico);
                       return (
@@ -1089,7 +1169,7 @@ export default function Dashboard() {
             </div>
 
             {/* ROW 3 — OUTROS TÉCNICOS (fill restante da largura) */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '10px' }}>
+            <div className="kanban-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '10px', padding: '0 16px' }}>
               {otherTechs.map(tech => {
                 const emPrep = machines.filter(m => !m.arquivada && m.estado === `em-preparacao-${tech.id}`);
                 const concl  = machines.filter(m => !m.arquivada && m.estado === `concluida-${tech.id}`);
@@ -1137,7 +1217,7 @@ export default function Dashboard() {
           {isAdmin && (<>
 
             {/* ROW 1 — A FAZER + CONCLUÍDA em destaque */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+            <div className="kanban-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px', padding: '0 16px' }}>
 
               <div style={{ ...panel(D.pink, true) }}>
                 <div style={{ ...hdr(D.pink) }}>
@@ -1195,7 +1275,7 @@ export default function Dashboard() {
             </div>
 
             {/* ROW 2 — 4 Técnicos em 2x2 */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+            <div className="kanban-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', padding: '0 16px' }}>
               {TECHNICIANS.map(tech => {
                 const emPrep = machines.filter(m => !m.arquivada && m.estado === `em-preparacao-${tech.id}`);
                 const concl  = machines.filter(m => !m.arquivada && m.estado === `concluida-${tech.id}`);
