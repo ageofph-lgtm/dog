@@ -771,178 +771,160 @@ export default function Dashboard() {
     minHeight: '80px',
   });
 
+  const D = {
+    panel:  isDarkMode ? '#0E0E1C' : '#FFFFFF',
+    border: isDarkMode ? '#1A1A2E' : '#E0E0F0',
+    text:   isDarkMode ? '#F0F0FF' : '#0A0A1A',
+    muted:  isDarkMode ? '#4A4A7A' : '#8080A0',
+    pink:   '#FF2D78',
+    blue:   '#4D9FFF',
+    purple: '#9B5CF6',
+    green:  '#22C55E',
+  };
+
+  const panel = (accent, glow = false) => ({
+    background: D.panel,
+    border: `1px solid ${D.border}`,
+    borderTop: `2px solid ${accent}`,
+    borderRadius: '10px',
+    overflow: 'hidden',
+    boxShadow: isDarkMode
+      ? `0 0 ${glow ? '28px' : '12px'} ${accent}${glow ? '22' : '0A'}, 0 4px 24px rgba(0,0,0,0.5)`
+      : '0 2px 12px rgba(0,0,0,0.07)',
+  });
+
+  const hdr = (accent) => ({
+    padding: '10px 14px',
+    borderBottom: `1px solid ${D.border}`,
+    background: isDarkMode ? `${accent}09` : `${accent}04`,
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+  });
+
+  const badge = (color, val) => (
+    <span style={{ fontSize: '10px', fontWeight: 700, fontFamily: 'monospace', padding: '1px 8px', borderRadius: '20px', background: `${color}18`, color, border: `1px solid ${color}35` }}>{val}</span>
+  );
+
+  const scroll = (maxH) => ({ padding: '8px', overflowY: 'auto', maxHeight: maxH, minHeight: '40px' });
+
   return (
-    <div style={{ minHeight: '100vh', padding: '0 16px 40px' }}>
+    <div style={{ minHeight: '100vh', padding: '0 16px 48px' }}>
       <style>{`
-        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #FF2D78; border-radius: 2px; }
-        .col-compact::-webkit-scrollbar-thumb { background: #4A4A7A; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,45,120,0.45); border-radius: 2px; }
+        .mini-scroll::-webkit-scrollbar-thumb { background: rgba(74,74,122,0.5); }
       `}</style>
 
-      {/* ═══════════════════════════════════════════════════════════════════
-           HERO — Logo + Nome centralizado
-      ═══════════════════════════════════════════════════════════════════ */}
-      <div style={{ textAlign: 'center', padding: '24px 0 20px', position: 'relative' }}>
-        {/* Glow aura */}
-        <div style={{ position: 'absolute', top: '10px', left: '50%', transform: 'translateX(-50%)', width: '200px', height: '200px', borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(255,45,120,0.12) 0%, transparent 70%)', pointerEvents: 'none' }} />
-        <img
-          src="https://media.base44.com/images/public/69c166ad19149fb0c07883cb/a35751fd9_Gemini_Generated_Image_scmohbscmohbscmo1.png"
-          alt="WATCHER"
-          style={{
-            width: '160px',
-            height: '160px',
-            objectFit: 'contain',
-            filter: `drop-shadow(0 0 24px rgba(255,45,120,0.55)) drop-shadow(0 0 50px rgba(77,159,255,0.2))`,
-            display: 'inline-block',
-            position: 'relative',
-          }}
-        />
-        <div style={{ marginTop: '8px' }}>
-          <div style={{ fontFamily: 'monospace', fontSize: '28px', fontWeight: 900, letterSpacing: '0.22em', color: D.text, textShadow: isDarkMode ? `0 0 30px rgba(255,45,120,0.4)` : 'none', lineHeight: 1 }}>
-            WATCHER
-          </div>
-          <div style={{ fontFamily: 'monospace', fontSize: '10px', letterSpacing: '0.18em', color: D.pink, marginTop: '4px' }}>
-            [UNIT-PINK-01]
-          </div>
+      {/* ══ HERO ═══════════════════════════════════════════════════════════ */}
+      <div style={{ textAlign: 'center', padding: '20px 0 14px', position: 'relative' }}>
+        <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '260px', height: '200px', background: 'radial-gradient(ellipse, rgba(255,45,120,0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <img src="https://media.base44.com/images/public/69c166ad19149fb0c07883cb/a35751fd9_Gemini_Generated_Image_scmohbscmohbscmo1.png" alt="WATCHER" style={{ width: '150px', height: '150px', objectFit: 'contain', position: 'relative', filter: 'drop-shadow(0 0 22px rgba(255,45,120,0.55)) drop-shadow(0 0 44px rgba(77,159,255,0.18))' }} />
+        <div style={{ marginTop: '6px' }}>
+          <div style={{ fontFamily: 'monospace', fontSize: '26px', fontWeight: 900, letterSpacing: '0.22em', color: D.text, textShadow: isDarkMode ? '0 0 28px rgba(255,45,120,0.35)' : 'none', lineHeight: 1 }}>WATCHER</div>
+          <div style={{ fontFamily: 'monospace', fontSize: '9px', letterSpacing: '0.18em', color: D.pink, marginTop: '3px' }}>[UNIT-PINK-01]</div>
         </div>
-        {/* Linha divisória neon */}
-        <div style={{ margin: '16px auto 0', maxWidth: '400px', height: '1px', background: `linear-gradient(90deg, transparent, ${D.pink}, ${D.blue}, transparent)`, opacity: 0.4 }} />
+        <div style={{ margin: '12px auto 0', maxWidth: '360px', height: '1px', background: `linear-gradient(90deg, transparent, ${D.pink}, ${D.blue}, transparent)`, opacity: 0.35 }} />
       </div>
 
-      {/* ═══════════════════════════════════════════════════════════════════
-           TOOLBAR — Ações + Busca
-      ═══════════════════════════════════════════════════════════════════ */}
-      <div style={{ marginBottom: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-            <PedidosPanel userPermissions={userPermissions} isCompact={true} />
-            {userPermissions?.canDeleteMachine && <OSNotificationsPanel userPermissions={userPermissions} />}
-            <UnifiedNotifications currentUser={currentUser} userPermissions={userPermissions} />
-            {selectedMachines.length > 0 && userPermissions?.canDeleteMachine && (
-              <button onClick={handleOpenMultiEdit} style={{ padding: '6px 12px', background: D.blue, color: 'white', border: 'none', borderRadius: '6px', fontFamily: 'monospace', fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', cursor: 'pointer' }}>
-                EDITAR {selectedMachines.length}
-              </button>
-            )}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-            {userPermissions?.canDeleteMachine && (
-              <button onClick={() => setShowBackupManager(true)} style={{ padding: '6px 12px', background: isDarkMode ? '#1A1A2E' : '#F0F0F8', color: D.muted, border: `1px solid ${D.border}`, borderRadius: '6px', fontFamily: 'monospace', fontSize: '10px', fontWeight: 700, cursor: 'pointer' }}>
-                BACKUP
-              </button>
-            )}
-            {userPermissions?.canCreateMachine && (<>
-              <button onClick={() => setShowBulkCreateModal(true)} style={{ padding: '6px 12px', background: 'rgba(77,159,255,0.1)', color: D.blue, border: `1px solid rgba(77,159,255,0.3)`, borderRadius: '6px', fontFamily: 'monospace', fontSize: '10px', fontWeight: 700, cursor: 'pointer' }}>+ MASSIVA</button>
-              <button onClick={() => setShowImageModal(true)} style={{ padding: '6px 12px', background: 'rgba(155,92,246,0.1)', color: D.purple, border: `1px solid rgba(155,92,246,0.3)`, borderRadius: '6px', fontFamily: 'monospace', fontSize: '10px', fontWeight: 700, cursor: 'pointer' }}>IA FOTO</button>
-              <button onClick={() => { setPrefillData(null); setShowCreateModal(true); }} style={{ padding: '6px 14px', background: `linear-gradient(135deg, ${D.pink}, ${D.purple})`, color: 'white', border: 'none', borderRadius: '6px', fontFamily: 'monospace', fontSize: '10px', fontWeight: 700, cursor: 'pointer', boxShadow: `0 0 12px rgba(255,45,120,0.3)` }}>+ NOVA</button>
-            </>)}
-          </div>
+      {/* ══ TOOLBAR ════════════════════════════════════════════════════════ */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+          <PedidosPanel userPermissions={userPermissions} isCompact={true} />
+          {userPermissions?.canDeleteMachine && <OSNotificationsPanel userPermissions={userPermissions} />}
+          <UnifiedNotifications currentUser={currentUser} userPermissions={userPermissions} />
+          {selectedMachines.length > 0 && userPermissions?.canDeleteMachine && (
+            <button onClick={handleOpenMultiEdit} style={{ padding: '6px 12px', background: D.blue, color: '#fff', border: 'none', borderRadius: '6px', fontFamily: 'monospace', fontSize: '10px', fontWeight: 700, cursor: 'pointer' }}>EDITAR {selectedMachines.length}</button>
+          )}
         </div>
-        {/* Search */}
-        <div style={{ position: 'relative', maxWidth: '380px' }}>
-          <Search style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', width: '14px', height: '14px', color: D.muted }} />
-          <input
-            type="text"
-            placeholder="SISTEMA DE BUSCA..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              width: '100%', padding: '8px 12px 8px 32px',
-              background: isDarkMode ? '#0E0E1C' : '#FFFFFF',
-              border: `1px solid ${D.border}`,
-              borderRadius: '8px',
-              fontFamily: 'monospace', fontSize: '11px', color: D.text,
-              outline: 'none', boxSizing: 'border-box',
-            }}
-          />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+          {userPermissions?.canDeleteMachine && (
+            <button onClick={() => setShowBackupManager(true)} style={{ padding: '6px 12px', background: isDarkMode ? '#1A1A2E' : '#F0F0F8', color: D.muted, border: `1px solid ${D.border}`, borderRadius: '6px', fontFamily: 'monospace', fontSize: '10px', fontWeight: 700, cursor: 'pointer' }}>BACKUP</button>
+          )}
+          {userPermissions?.canCreateMachine && (<>
+            <button onClick={() => setShowBulkCreateModal(true)} style={{ padding: '6px 12px', background: 'rgba(77,159,255,0.1)', color: D.blue, border: `1px solid rgba(77,159,255,0.3)`, borderRadius: '6px', fontFamily: 'monospace', fontSize: '10px', fontWeight: 700, cursor: 'pointer' }}>+ MASSIVA</button>
+            <button onClick={() => setShowImageModal(true)} style={{ padding: '6px 12px', background: 'rgba(155,92,246,0.1)', color: D.purple, border: `1px solid rgba(155,92,246,0.3)`, borderRadius: '6px', fontFamily: 'monospace', fontSize: '10px', fontWeight: 700, cursor: 'pointer' }}>IA FOTO</button>
+            <button onClick={() => { setPrefillData(null); setShowCreateModal(true); }} style={{ padding: '6px 14px', background: `linear-gradient(135deg, ${D.pink}, ${D.purple})`, color: '#fff', border: 'none', borderRadius: '6px', fontFamily: 'monospace', fontSize: '10px', fontWeight: 700, cursor: 'pointer', boxShadow: `0 0 10px rgba(255,45,120,0.3)` }}>+ NOVA</button>
+          </>)}
         </div>
       </div>
 
-      {/* ═══════════════════════════════════════════════════════════════════
-           SEARCH RESULTS
-      ═══════════════════════════════════════════════════════════════════ */}
+      {/* Search */}
+      <div style={{ position: 'relative', maxWidth: '380px', marginBottom: '16px' }}>
+        <Search style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', width: '13px', height: '13px', color: D.muted }} />
+        <input type="text" placeholder="BUSCAR MÁQUINA..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+          style={{ width: '100%', padding: '8px 12px 8px 30px', background: D.panel, border: `1px solid ${D.border}`, borderRadius: '8px', fontFamily: 'monospace', fontSize: '11px', color: D.text, outline: 'none', boxSizing: 'border-box' }} />
+      </div>
+
+      {/* ══ SEARCH ══════════════════════════════════════════════════════════ */}
       {searchQuery ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          {filteredMachines.map(m => (
-            <MachineCardCompact key={m.id} machine={m} onClick={(m) => { setSelectedMachine(m); setShowObsModal(true); }} isDark={isDarkMode} />
-          ))}
+          {filteredMachines.map(m => <MachineCardCompact key={m.id} machine={m} onClick={(m) => { setSelectedMachine(m); setShowObsModal(true); }} isDark={isDarkMode} />)}
         </div>
       ) : (
         <DragDropContext onDragEnd={handleDragEnd}>
 
-          {/* ═══════════════════════════════════════════════════════════════
-               LAYOUT PRINCIPAL — 3 colunas no desktop
-               [MY COLUMN | A FAZER] [CONCLUÍDA] [OUTROS TÉCNICOS]
-          ═══════════════════════════════════════════════════════════════ */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '12px', alignItems: 'start' }}>
+          {/* ══════════════════════════════════════════════════════════════
+               VISÃO TÉCNICO
+          ══════════════════════════════════════════════════════════════ */}
+          {!isAdmin && myTech && (<>
 
-            {/* ── COL 1: MEU QUADRO (técnico logado) + A FAZER ──────────────── */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {/* ROW 1 — MEU QUADRO + A FAZER dominam, lado a lado */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
 
-              {/* MEU QUADRO — destaque máximo, só aparece se for técnico */}
-              {myTech && (
-                <div style={{ ...colPanel(myTech.borderColor, true) }}>
-                  <div style={{ ...colHeader(myTech.borderColor) }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: myTech.borderColor, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 12px ${myTech.borderColor}80`, flexShrink: 0 }}>
-                        <span style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: 900, color: 'white' }}>{myTech.name.charAt(0)}</span>
-                      </div>
-                      <div>
-                        <div style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: 700, letterSpacing: '0.1em', color: D.text }}>{myTech.name}</div>
-                        <div style={{ fontFamily: 'monospace', fontSize: '8px', color: myTech.borderColor, letterSpacing: '0.08em' }}>MEU QUADRO</div>
-                      </div>
-                      {badge(myTech.borderColor, myMachines.length)}
+              {/* MEU QUADRO */}
+              <div style={{ ...panel(myTech.borderColor, true) }}>
+                <div style={{ ...hdr(myTech.borderColor) }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: myTech.borderColor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: `0 0 12px ${myTech.borderColor}80` }}>
+                      <span style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: 900, color: '#fff' }}>{myTech.name.charAt(0)}</span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '9px', fontFamily: 'monospace', color: D.green }}>
-                      <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: D.green, boxShadow: `0 0 6px ${D.green}` }} />
-                      ONLINE
+                    <div>
+                      <div style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: 700, letterSpacing: '0.1em', color: D.text }}>{myTech.name}</div>
+                      <div style={{ fontFamily: 'monospace', fontSize: '8px', color: myTech.borderColor, letterSpacing: '0.08em' }}>MEU QUADRO</div>
                     </div>
+                    {badge(myTech.borderColor, myMachines.length)}
                   </div>
-                  <Droppable droppableId={`em-preparacao-${myTechId}`}>
-                    {(provided) => (
-                      <div ref={provided.innerRef} {...provided.droppableProps} style={{ ...colScroll('500px') }}>
-                        {myMachines.map((machine, index) => (
-                          <Draggable key={machine.id} draggableId={machine.id} index={index}>
-                            {(provided) => (
-                              <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} style={{ ...provided.draggableProps.style }}>
-                                <MachineCardTechnician machine={machine} onClick={(m) => { setSelectedMachine(m); setShowObsModal(true); }} techColor={myTech.borderColor} isDark={isDarkMode} isSelected={selectedMachines.some(sm => sm.id === machine.id)} onSelect={handleSelectMachine} />
-                              </div>
-                            )}
-                          </Draggable>
-                        ))}
-                        {provided.placeholder}
-                        {myMachines.length === 0 && (
-                          <div style={{ padding: '32px', textAlign: 'center', color: D.muted, fontFamily: 'monospace', fontSize: '11px' }}>
-                            <div style={{ fontSize: '32px', marginBottom: '8px', opacity: 0.3 }}>⚙</div>
-                            SEM MÁQUINAS ATRIBUÍDAS
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </Droppable>
-                  {/* Concluídas do meu técnico */}
-                  <Droppable droppableId={`concluida-${myTechId}`}>
-                    {(provided) => <div ref={provided.innerRef} {...provided.droppableProps} style={{ display: 'none' }}>{provided.placeholder}</div>}
-                  </Droppable>
-                  <TechnicianCompletedSection machines={myConc} techId={myTechId} onOpenMachine={(m) => { setSelectedMachine(m); setShowObsModal(true); }} isDark={isDarkMode} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: D.green, boxShadow: `0 0 6px ${D.green}` }} />
+                    <span style={{ fontSize: '8px', fontFamily: 'monospace', color: D.green }}>ONLINE</span>
+                  </div>
                 </div>
-              )}
+                <Droppable droppableId={`em-preparacao-${myTechId}`}>
+                  {(provided) => (
+                    <div ref={provided.innerRef} {...provided.droppableProps} style={{ ...scroll('55vh') }}>
+                      {myMachines.map((machine, index) => (
+                        <Draggable key={machine.id} draggableId={machine.id} index={index}>
+                          {(provided) => (
+                            <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} style={{ ...provided.draggableProps.style }}>
+                              <MachineCardTechnician machine={machine} onClick={(m) => { setSelectedMachine(m); setShowObsModal(true); }} techColor={myTech.borderColor} isDark={isDarkMode} isSelected={selectedMachines.some(sm => sm.id === machine.id)} onSelect={handleSelectMachine} />
+                            </div>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                      {myMachines.length === 0 && <div style={{ padding: '40px', textAlign: 'center', color: D.muted, fontFamily: 'monospace', fontSize: '11px', opacity: 0.5 }}><div style={{ fontSize: '28px', marginBottom: '8px' }}>⚙</div>SEM MÁQUINAS</div>}
+                    </div>
+                  )}
+                </Droppable>
+                <Droppable droppableId={`concluida-${myTechId}`}>
+                  {(provided) => <div ref={provided.innerRef} {...provided.droppableProps} style={{ display: 'none' }}>{provided.placeholder}</div>}
+                </Droppable>
+                <TechnicianCompletedSection machines={myConc} techId={myTechId} onOpenMachine={(m) => { setSelectedMachine(m); setShowObsModal(true); }} isDark={isDarkMode} />
+              </div>
 
               {/* A FAZER */}
-              <div style={{ ...colPanel(D.pink, !myTech) }}>
-                <div style={{ ...colHeader(D.pink) }}>
+              <div style={{ ...panel(D.pink) }}>
+                <div style={{ ...hdr(D.pink) }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Wrench style={{ width: '13px', height: '13px', color: D.pink }} />
-                    <span style={{ fontFamily: 'monospace', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', color: D.text }}>A FAZER</span>
+                    <span style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: 700, letterSpacing: '0.1em', color: D.text }}>A FAZER</span>
                     {badge(D.pink, aFazerMachines.length)}
                   </div>
-                  <button onClick={() => setShowAFazerFullscreen(true)} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>
-                    <Maximize2 style={{ width: '13px', height: '13px', color: D.muted }} />
-                  </button>
+                  <button onClick={() => setShowAFazerFullscreen(true)} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}><Maximize2 style={{ width: '13px', height: '13px', color: D.muted }} /></button>
                 </div>
                 <Droppable droppableId="a-fazer">
                   {(provided) => (
-                    <div ref={provided.innerRef} {...provided.droppableProps} style={{ ...colScroll(myTech ? '320px' : '480px') }}>
+                    <div ref={provided.innerRef} {...provided.droppableProps} style={{ ...scroll('55vh') }}>
                       {aFazerMachines.map((machine, index) => (
                         <Draggable key={machine.id} draggableId={machine.id} index={index}>
                           {(provided) => (
@@ -953,53 +935,40 @@ export default function Dashboard() {
                         </Draggable>
                       ))}
                       {provided.placeholder}
-                      {aFazerMachines.length === 0 && (
-                        <div style={{ padding: '24px', textAlign: 'center', color: D.muted, fontFamily: 'monospace', fontSize: '11px' }}>FILA VAZIA</div>
-                      )}
+                      {aFazerMachines.length === 0 && <div style={{ padding: '32px', textAlign: 'center', color: D.muted, fontFamily: 'monospace', fontSize: '11px', opacity: 0.5 }}>FILA VAZIA</div>}
                     </div>
                   )}
                 </Droppable>
               </div>
             </div>
 
-            {/* ── COL 2: CONCLUÍDA ───────────────────────────────────────────── */}
-            <div style={{ ...colPanel(D.green) }}>
-              <div style={{ ...colHeader(D.green) }}>
+            {/* ROW 2 — CONCLUÍDA (menor, grid horizontal) */}
+            <div style={{ ...panel(D.green), marginBottom: '12px' }}>
+              <div style={{ ...hdr(D.green) }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <CheckCircle2 style={{ width: '13px', height: '13px', color: D.green }} />
                   <span style={{ fontFamily: 'monospace', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', color: D.text }}>CONCLUÍDA</span>
                   {badge(D.green, allConcluidaMachines.length)}
                 </div>
-                <button onClick={() => setShowConcluidaFullscreen(true)} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>
-                  <Maximize2 style={{ width: '13px', height: '13px', color: D.muted }} />
-                </button>
+                <button onClick={() => setShowConcluidaFullscreen(true)} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}><Maximize2 style={{ width: '13px', height: '13px', color: D.muted }} /></button>
               </div>
               <Droppable droppableId="concluida-geral">
                 {(provided) => (
-                  <div ref={provided.innerRef} {...provided.droppableProps} style={{ ...colScroll('560px') }}>
+                  <div ref={provided.innerRef} {...provided.droppableProps}
+                    style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '5px', padding: '8px', maxHeight: '180px', overflowY: 'auto' }}>
                     {allConcluidaMachines.map((machine, index) => (
                       <Draggable key={machine.id} draggableId={`concluida-${machine.id}`} index={index} isDragDisabled={!userPermissions?.canMoveAnyMachine}>
                         {(provided) => (
                           <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} style={{ ...provided.draggableProps.style }}>
-                            <button
-                              onClick={() => { setSelectedMachine(machine); setShowObsModal(true); }}
-                              style={{
-                                width: '100%', textAlign: 'left', cursor: 'pointer',
-                                background: isDarkMode ? '#0E0E1C' : '#FFFFFF',
-                                border: `1px solid ${D.border}`,
-                                borderLeft: `3px solid ${machine.tecnico ? TECHNICIANS.find(t => t.id === machine.tecnico)?.borderColor : D.green}`,
-                                borderRadius: '8px', padding: '8px 10px', marginBottom: '5px',
-                                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px',
-                                boxShadow: isDarkMode ? '0 1px 4px rgba(0,0,0,0.4)' : 'none',
-                              }}
-                            >
+                            <button onClick={() => { setSelectedMachine(machine); setShowObsModal(true); }}
+                              style={{ width: '100%', textAlign: 'left', cursor: 'pointer', background: isDarkMode ? '#0A0A14' : '#F8F8FF', border: `1px solid ${D.border}`, borderLeft: `3px solid ${machine.tecnico ? TECHNICIANS.find(t => t.id === machine.tecnico)?.borderColor : D.green}`, borderRadius: '6px', padding: '7px 9px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
                               <div>
-                                <div style={{ fontFamily: 'monospace', fontSize: '9px', color: D.muted, marginBottom: '1px' }}>{machine.modelo}</div>
-                                <div style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: 700, color: D.text, letterSpacing: '0.05em' }}>{machine.serie}</div>
+                                <div style={{ fontFamily: 'monospace', fontSize: '9px', color: D.muted }}>{machine.modelo}</div>
+                                <div style={{ fontFamily: 'monospace', fontSize: '11px', fontWeight: 700, color: D.text }}>{machine.serie}</div>
                               </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0 }}>
-                                <span style={{ fontSize: '9px', color: D.muted, fontFamily: 'monospace', textTransform: 'uppercase' }}>{machine.tecnico || ''}</span>
-                                <CheckCircle2 style={{ width: '12px', height: '12px', color: D.green }} />
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                                <span style={{ fontSize: '8px', color: D.muted, fontFamily: 'monospace', textTransform: 'uppercase' }}>{machine.tecnico || ''}</span>
+                                <CheckCircle2 style={{ width: '11px', height: '11px', color: D.green }} />
                               </div>
                             </button>
                           </div>
@@ -1012,24 +981,25 @@ export default function Dashboard() {
               </Droppable>
             </div>
 
-            {/* ── COL 3: OUTROS TÉCNICOS (compactos) ───────────────────────── */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {(isAdmin ? TECHNICIANS : otherTechs).map(tech => {
-                const emPrep  = machines.filter(m => !m.arquivada && m.estado === `em-preparacao-${tech.id}`);
-                const concl   = machines.filter(m => !m.arquivada && m.estado === `concluida-${tech.id}`);
+            {/* ROW 3 — OUTROS TÉCNICOS (mini) */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px' }}>
+              {otherTechs.map(tech => {
+                const emPrep = machines.filter(m => !m.arquivada && m.estado === `em-preparacao-${tech.id}`);
+                const concl  = machines.filter(m => !m.arquivada && m.estado === `concluida-${tech.id}`);
                 return (
-                  <div key={tech.id} style={{ background: isDarkMode ? '#0E0E1C' : '#FFFFFF', border: `1px solid ${D.border}`, borderTop: `2px solid ${tech.borderColor}`, borderRadius: '8px', overflow: 'hidden' }}>
-                    <div style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: `1px solid ${D.border}`, background: isDarkMode ? `${tech.borderColor}06` : `${tech.borderColor}03` }}>
-                      <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: tech.borderColor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: `0 0 8px ${tech.borderColor}50` }}>
-                        <span style={{ fontFamily: 'monospace', fontSize: '10px', fontWeight: 900, color: 'white' }}>{tech.name.charAt(0)}</span>
+                  <div key={tech.id} style={{ background: isDarkMode ? '#0C0C18' : '#FAFAFA', border: `1px solid ${D.border}`, borderTop: `2px solid ${tech.borderColor}`, borderRadius: '8px', overflow: 'hidden' }}>
+                    <div style={{ padding: '7px 10px', display: 'flex', alignItems: 'center', gap: '7px', borderBottom: `1px solid ${D.border}`, background: isDarkMode ? `${tech.borderColor}06` : `${tech.borderColor}03` }}>
+                      <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: tech.borderColor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: `0 0 7px ${tech.borderColor}50` }}>
+                        <span style={{ fontFamily: 'monospace', fontSize: '10px', fontWeight: 900, color: '#fff' }}>{tech.name.charAt(0)}</span>
                       </div>
-                      <span style={{ fontFamily: 'monospace', fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', color: D.text }}>{tech.name}</span>
+                      <span style={{ fontFamily: 'monospace', fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', color: D.text, flex: 1 }}>{tech.name}</span>
                       {badge(tech.borderColor, emPrep.length)}
-                      {concl.length > 0 && <span style={{ fontSize: '9px', color: D.muted, fontFamily: 'monospace', marginLeft: 'auto' }}>✓ {concl.length}</span>}
+                      {concl.length > 0 && <span style={{ fontSize: '9px', color: D.muted, fontFamily: 'monospace' }}>✓{concl.length}</span>}
                     </div>
                     <Droppable droppableId={`em-preparacao-${tech.id}`}>
                       {(provided) => (
-                        <div ref={provided.innerRef} {...provided.droppableProps} className="col-compact" style={{ padding: '6px 8px', maxHeight: '200px', overflowY: 'auto', minHeight: '40px' }}>
+                        <div ref={provided.innerRef} {...provided.droppableProps} className="mini-scroll"
+                          style={{ padding: '5px', maxHeight: '150px', overflowY: 'auto', minHeight: '32px' }}>
                           {emPrep.map((machine, index) => (
                             <Draggable key={machine.id} draggableId={machine.id} index={index}>
                               {(provided) => (
@@ -1040,9 +1010,7 @@ export default function Dashboard() {
                             </Draggable>
                           ))}
                           {provided.placeholder}
-                          {emPrep.length === 0 && (
-                            <div style={{ padding: '10px', textAlign: 'center', color: D.muted, fontFamily: 'monospace', fontSize: '9px', opacity: 0.5 }}>em espera</div>
-                          )}
+                          {emPrep.length === 0 && <div style={{ padding: '8px', textAlign: 'center', color: D.muted, fontFamily: 'monospace', fontSize: '9px', opacity: 0.5 }}>em espera</div>}
                         </div>
                       )}
                     </Droppable>
@@ -1054,24 +1022,137 @@ export default function Dashboard() {
                 );
               })}
             </div>
-          </div>
+          </>)}
 
-          {/* Multi-edit */}
+          {/* ══════════════════════════════════════════════════════════════
+               VISÃO ADMIN
+          ══════════════════════════════════════════════════════════════ */}
+          {isAdmin && (<>
+
+            {/* ROW 1 — A FAZER + CONCLUÍDA em destaque */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+
+              <div style={{ ...panel(D.pink, true) }}>
+                <div style={{ ...hdr(D.pink) }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Wrench style={{ width: '13px', height: '13px', color: D.pink }} />
+                    <span style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: 700, letterSpacing: '0.1em', color: D.text }}>A FAZER</span>
+                    {badge(D.pink, aFazerMachines.length)}
+                  </div>
+                  <button onClick={() => setShowAFazerFullscreen(true)} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}><Maximize2 style={{ width: '13px', height: '13px', color: D.muted }} /></button>
+                </div>
+                <Droppable droppableId="a-fazer">
+                  {(provided) => (
+                    <div ref={provided.innerRef} {...provided.droppableProps} style={{ ...scroll('42vh') }}>
+                      {aFazerMachines.map((machine, index) => (
+                        <Draggable key={machine.id} draggableId={machine.id} index={index}>
+                          {(provided) => (
+                            <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} style={{ ...provided.draggableProps.style }}>
+                              <MachineCardCompact machine={machine} onClick={(m) => { setSelectedMachine(m); setShowObsModal(true); }} isDark={isDarkMode} onAssign={handleAssignMachine} showAssignButton={true} isSelected={selectedMachines.some(sm => sm.id === machine.id)} onSelect={handleSelectMachine} />
+                            </div>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+              </div>
+
+              <div style={{ ...panel(D.green) }}>
+                <div style={{ ...hdr(D.green) }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <CheckCircle2 style={{ width: '13px', height: '13px', color: D.green }} />
+                    <span style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: 700, letterSpacing: '0.1em', color: D.text }}>CONCLUÍDA</span>
+                    {badge(D.green, allConcluidaMachines.length)}
+                  </div>
+                  <button onClick={() => setShowConcluidaFullscreen(true)} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}><Maximize2 style={{ width: '13px', height: '13px', color: D.muted }} /></button>
+                </div>
+                <Droppable droppableId="concluida-geral">
+                  {(provided) => (
+                    <div ref={provided.innerRef} {...provided.droppableProps} style={{ ...scroll('42vh') }}>
+                      {allConcluidaMachines.map((machine, index) => (
+                        <Draggable key={machine.id} draggableId={`concluida-${machine.id}`} index={index} isDragDisabled={!userPermissions?.canMoveAnyMachine}>
+                          {(provided) => (
+                            <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} style={{ ...provided.draggableProps.style }}>
+                              <button onClick={() => { setSelectedMachine(machine); setShowObsModal(true); }}
+                                style={{ width: '100%', textAlign: 'left', cursor: 'pointer', background: isDarkMode ? '#0A0A14' : '#F8F8FF', border: `1px solid ${D.border}`, borderLeft: `3px solid ${machine.tecnico ? TECHNICIANS.find(t => t.id === machine.tecnico)?.borderColor : D.green}`, borderRadius: '6px', padding: '7px 9px', marginBottom: '5px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                                <div>
+                                  <div style={{ fontFamily: 'monospace', fontSize: '9px', color: D.muted }}>{machine.modelo}</div>
+                                  <div style={{ fontFamily: 'monospace', fontSize: '11px', fontWeight: 700, color: D.text }}>{machine.serie}</div>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                                  <span style={{ fontSize: '8px', color: D.muted, fontFamily: 'monospace', textTransform: 'uppercase' }}>{machine.tecnico || ''}</span>
+                                  <CheckCircle2 style={{ width: '11px', height: '11px', color: D.green }} />
+                                </div>
+                              </button>
+                            </div>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+              </div>
+            </div>
+
+            {/* ROW 2 — 4 Técnicos em 2x2 */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+              {TECHNICIANS.map(tech => {
+                const emPrep = machines.filter(m => !m.arquivada && m.estado === `em-preparacao-${tech.id}`);
+                const concl  = machines.filter(m => !m.arquivada && m.estado === `concluida-${tech.id}`);
+                return (
+                  <div key={tech.id} style={{ ...panel(tech.borderColor) }}>
+                    <div style={{ ...hdr(tech.borderColor) }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: tech.borderColor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: `0 0 10px ${tech.borderColor}60` }}>
+                          <span style={{ fontFamily: 'monospace', fontSize: '11px', fontWeight: 900, color: '#fff' }}>{tech.name.charAt(0)}</span>
+                        </div>
+                        <span style={{ fontFamily: 'monospace', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', color: D.text }}>{tech.name}</span>
+                        {badge(tech.borderColor, emPrep.length)}
+                        {concl.length > 0 && <span style={{ fontSize: '9px', color: D.muted, fontFamily: 'monospace', marginLeft: 'auto' }}>✓{concl.length}</span>}
+                      </div>
+                    </div>
+                    <Droppable droppableId={`em-preparacao-${tech.id}`}>
+                      {(provided) => (
+                        <div ref={provided.innerRef} {...provided.droppableProps} style={{ ...scroll('30vh') }}>
+                          {emPrep.map((machine, index) => (
+                            <Draggable key={machine.id} draggableId={machine.id} index={index}>
+                              {(provided) => (
+                                <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} style={{ ...provided.draggableProps.style }}>
+                                  <MachineCardTechnician machine={machine} onClick={(m) => { setSelectedMachine(m); setShowObsModal(true); }} techColor={tech.borderColor} isDark={isDarkMode} isSelected={selectedMachines.some(sm => sm.id === machine.id)} onSelect={handleSelectMachine} />
+                                </div>
+                              )}
+                            </Draggable>
+                          ))}
+                          {provided.placeholder}
+                          {emPrep.length === 0 && <div style={{ padding: '20px', textAlign: 'center', color: D.muted, fontFamily: 'monospace', fontSize: '10px', opacity: 0.5 }}>em espera</div>}
+                        </div>
+                      )}
+                    </Droppable>
+                    <Droppable droppableId={`concluida-${tech.id}`}>
+                      {(provided) => <div ref={provided.innerRef} {...provided.droppableProps} style={{ display: 'none' }}>{provided.placeholder}</div>}
+                    </Droppable>
+                    <TechnicianCompletedSection machines={concl} techId={tech.id} onOpenMachine={(m) => { setSelectedMachine(m); setShowObsModal(true); }} isDark={isDarkMode} />
+                  </div>
+                );
+              })}
+            </div>
+          </>)}
+
           {showMultiEditModal && (
-            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-              <div style={{ background: isDarkMode ? '#0E0E1C' : '#FFFFFF', border: `1px solid ${D.border}`, borderTop: `2px solid ${D.blue}`, borderRadius: '12px', padding: '20px', width: '100%', maxWidth: '700px', maxHeight: '80vh', overflowY: 'auto' }}>
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)', zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+              <div style={{ background: D.panel, border: `1px solid ${D.border}`, borderTop: `2px solid ${D.blue}`, borderRadius: '12px', padding: '20px', width: '100%', maxWidth: '700px', maxHeight: '80vh', overflowY: 'auto' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                  <h3 style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '14px', color: D.text, letterSpacing: '0.08em' }}>EDITAR {selectedMachines.length} MÁQUINAS</h3>
-                  <button onClick={() => setShowMultiEditModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: D.muted }}>✕</button>
+                  <h3 style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '13px', color: D.text, letterSpacing: '0.08em', margin: 0 }}>EDITAR {selectedMachines.length} MÁQUINAS</h3>
+                  <button onClick={() => setShowMultiEditModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: D.muted, fontSize: '16px' }}>✕</button>
                 </div>
                 {selectedMachines.map(machine => (
                   <MachineEditCard key={machine.id} machine={machine} isDark={isDarkMode}
                     onUpdate={async (field, value) => {
-                      try {
-                        await FrotaACP.update(machine.id, { [field]: value });
-                        setSelectedMachines(prev => prev.map(m => m.id === machine.id ? { ...m, [field]: value } : m));
-                        await loadMachines();
-                      } catch (error) { console.error("Erro:", error); }
+                      try { await FrotaACP.update(machine.id, { [field]: value }); setSelectedMachines(prev => prev.map(m => m.id === machine.id ? { ...m, [field]: value } : m)); await loadMachines(); }
+                      catch (e) { console.error(e); }
                     }}
                     onRemove={() => handleSelectMachine(machine)}
                     onViewDetails={() => { setSelectedMachine(machine); setShowObsModal(true); }}
@@ -1086,25 +1167,12 @@ export default function Dashboard() {
 
       <FullscreenSectionModal isOpen={showAFazerFullscreen} onClose={() => setShowAFazerFullscreen(false)} title="A Fazer" machines={aFazerMachines} icon={Wrench} onOpenMachine={(m) => { setSelectedMachine(m); setShowObsModal(true); }} onAssign={handleAssignMachine} userPermissions={userPermissions} currentUser={currentUser} isDark={isDarkMode} />
       <FullscreenSectionModal isOpen={showConcluidaFullscreen} onClose={() => setShowConcluidaFullscreen(false)} title="Concluída" machines={allConcluidaMachines} icon={CheckCircle2} onOpenMachine={(m) => { setSelectedMachine(m); setShowObsModal(true); }} userPermissions={userPermissions} currentUser={currentUser} isDark={isDarkMode} />
-
-      {showObsModal && selectedMachine && (
-        <ObservationsModal machine={selectedMachine} onClose={() => { setShowObsModal(false); setSelectedMachine(null); }} onUpdate={handleMachineUpdate} onAddObs={handleAddObservation} currentUser={currentUser} userPermissions={userPermissions} isDark={isDarkMode} />
-      )}
-      {showCreateModal && (
-        <CreateMachineModal onClose={() => { setShowCreateModal(false); setPrefillData(null); }} onCreate={handleCreateMachine} prefillData={prefillData} isDark={isDarkMode} />
-      )}
-      {showImageModal && (
-        <ImageUploadModal onClose={() => setShowImageModal(false)} onMachineDetected={(data) => { setPrefillData(data); setShowImageModal(false); setShowCreateModal(true); }} isDark={isDarkMode} />
-      )}
-      {showBulkCreateModal && (
-        <BulkCreateModal onClose={() => setShowBulkCreateModal(false)} onCreate={handleBulkCreate} isDark={isDarkMode} />
-      )}
-      {showEditModal && machineToEdit && (
-        <EditMachineModal machine={machineToEdit} onClose={() => { setShowEditModal(false); setMachineToEdit(null); }} onUpdate={handleEditSave} isDark={isDarkMode} />
-      )}
-      {showBackupManager && (
-        <BackupManager onClose={() => setShowBackupManager(false)} isDark={isDarkMode} />
-      )}
+      {showObsModal && selectedMachine && <ObservationsModal machine={selectedMachine} onClose={() => { setShowObsModal(false); setSelectedMachine(null); }} onUpdate={handleMachineUpdate} onAddObs={handleAddObservation} currentUser={currentUser} userPermissions={userPermissions} isDark={isDarkMode} />}
+      {showCreateModal && <CreateMachineModal onClose={() => { setShowCreateModal(false); setPrefillData(null); }} onCreate={handleCreateMachine} prefillData={prefillData} isDark={isDarkMode} />}
+      {showImageModal && <ImageUploadModal onClose={() => setShowImageModal(false)} onMachineDetected={(data) => { setPrefillData(data); setShowImageModal(false); setShowCreateModal(true); }} isDark={isDarkMode} />}
+      {showBulkCreateModal && <BulkCreateModal onClose={() => setShowBulkCreateModal(false)} onCreate={handleBulkCreate} isDark={isDarkMode} />}
+      {showEditModal && machineToEdit && <EditMachineModal machine={machineToEdit} onClose={() => { setShowEditModal(false); setMachineToEdit(null); }} onUpdate={handleEditSave} isDark={isDarkMode} />}
+      {showBackupManager && <BackupManager onClose={() => setShowBackupManager(false)} isDark={isDarkMode} />}
     </div>
   );
 }

@@ -38,7 +38,7 @@ export default function Layout({ children, currentPageName }) {
   const [showInstallBanner, setShowInstallBanner] = useState(false);
 
   const theme = isDark ? T.dark : T.light;
-  const navH  = 72;
+  const navH  = 52;
   const bannerH = 48;
 
   // ── PWA ────────────────────────────────────────────────────────────────────
@@ -147,23 +147,13 @@ export default function Layout({ children, currentPageName }) {
         {/* Pink+Blue gradient top line */}
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: `linear-gradient(90deg, transparent, ${T.pink} 30%, ${T.blue} 70%, transparent)` }} />
 
-        {/* ── Logo + Name ─────────────────────────────────────────────────── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ position: 'relative' }}>
-            <img src={LOGO_URL} alt="WATCHER"
-              style={{ width: '52px', height: '52px', objectFit: 'contain', filter: `drop-shadow(0 0 12px rgba(255,45,120,0.5))` }} />
-          </div>
-          <div>
-            <div style={{ fontFamily: 'monospace', fontSize: '22px', fontWeight: 900, letterSpacing: '0.18em', color: theme.text, lineHeight: 1, textShadow: isDark ? `0 0 20px rgba(255,45,120,0.3)` : 'none' }}>
-              WATCHER
-            </div>
-            <div style={{ fontFamily: 'monospace', fontSize: '9px', letterSpacing: '0.12em', color: T.pink, marginTop: '2px' }}>
-              [UNIT-PINK-01]
-            </div>
-          </div>
+        {/* ── Nav controls only — logo está no hero do dashboard ─────── */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {/* mini logo apenas para identificação da aba/PWA */}
+          <img src={LOGO_URL} alt="W" style={{ width: '30px', height: '30px', objectFit: 'contain', opacity: 0.7, filter: 'drop-shadow(0 0 6px rgba(255,45,120,0.4))' }} />
+          <span style={{ fontFamily: 'monospace', fontSize: '11px', fontWeight: 700, letterSpacing: '0.12em', color: T.pink, opacity: 0.7 }}>WATCHER</span>
         </div>
 
-        {/* ── Right controls ───────────────────────────────────────────────── */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
 
           {/* Theme toggle — ONE button, global */}
