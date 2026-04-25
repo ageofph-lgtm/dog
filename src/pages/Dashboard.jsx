@@ -571,6 +571,33 @@ export default function Dashboard() {
   const handleOpenMultiEdit = () => { if (selectedMachines.length > 0) setShowMultiEditModal(true); };
   const handleCloseMultiEdit = () => { setShowMultiEditModal(false); setSelectedMachines([]); };
 
+  const handleMachineUpdate = async (machineId, updateData) => {
+    try {
+      setMachines(prev => prev.map(m => m.id === machineId ? { ...m, ...updateData } : m));
+      await FrotaACP.update(machineId, updateData);
+      if (updateData.estado && selectedMachine?.serie) {
+        syncMachineToPortal(selectedMachine.serie, updateData.estado);
+      }
+    } catch (error) { console.error("Erro ao atualizar máquina:", error); await loadMachines(); }
+  };
+
+  const handleBulkCreate = async (machinesData) => {
+    try {
+      await Promise.all(machinesData.map(m => FrotaACP.create({ ...m, estado: 'a-fazer' })));
+      await loadMachines();
+      setShowBulkCreateModal(false);
+    } catch (error) { console.error("Erro ao criar máquinas em massa:", error); }
+  };
+
+  const handleEditSave = async (machineId, updateData) => {
+    try {
+      await FrotaACP.update(machineId, updateData);
+      await loadMachines();
+      setShowEditModal(false);
+      setMachineToEdit(null);
+    } catch (error) { console.error("Erro ao salvar edição:", error); }
+  };
+
 
   // ── TIMER HANDLERS ──
   const handleTimerStart = async (machineId) => {
@@ -730,47 +757,6 @@ export default function Dashboard() {
   const myConc     = useMemo(() => machines.filter(m => !m.arquivada && m.estado === `concluida-${myTechId}`), [machines, myTechId]);
 
   // ── Helpers de UI ─────────────────────────────────────────────────────────
-  const D = {
-    bg:      isDarkMode ? '#09090F' : '#F4F4FF',
-    panel:   isDarkMode ? '#0E0E1C' : '#FFFFFF',
-    border:  isDarkMode ? '#1A1A2E' : '#E0E0F0',
-    text:    isDarkMode ? '#F0F0FF' : '#0A0A1A',
-    muted:   isDarkMode ? '#4A4A7A' : '#8080A0',
-    pink:    '#FF2D78',
-    blue:    '#4D9FFF',
-    purple:  '#9B5CF6',
-    green:   '#22C55E',
-  };
-
-  const colPanel = (accentColor, glow = false) => ({
-    background: D.panel,
-    border: `1px solid ${D.border}`,
-    borderTop: `2px solid ${accentColor}`,
-    borderRadius: '10px',
-    overflow: 'hidden',
-    boxShadow: isDarkMode
-      ? `0 0 ${glow ? '30px' : '16px'} ${accentColor}${glow ? '18' : '0A'}, 0 4px 24px rgba(0,0,0,0.5)`
-      : `0 2px 12px rgba(0,0,0,0.06)`,
-  });
-
-  const colHeader = (accentColor) => ({
-    padding: '11px 14px',
-    borderBottom: `1px solid ${D.border}`,
-    background: isDarkMode ? `${accentColor}08` : `${accentColor}04`,
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-  });
-
-  const badge = (color, val) => (
-    <span style={{ fontSize: '10px', fontWeight: 700, fontFamily: 'monospace', padding: '1px 8px', borderRadius: '20px', background: `${color}18`, color: color, border: `1px solid ${color}35` }}>{val}</span>
-  );
-
-  const colScroll = (height = '380px') => ({
-    padding: '10px',
-    overflowY: 'auto',
-    maxHeight: height,
-    minHeight: '80px',
-  });
-
   const D = {
     panel:  isDarkMode ? '#0E0E1C' : '#FFFFFF',
     border: isDarkMode ? '#1A1A2E' : '#E0E0F0',
