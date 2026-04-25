@@ -203,7 +203,7 @@ const MachineCardCompact = ({ machine, onClick, isDark, onAssign, showAssignButt
   );
 };
 
-const MachineCardTechnician = ({ machine, onClick, techColor, isDark, isSelected, onSelect }) => {
+const MachineCardTechnician = ({ machine, onClick, techColor, isDark, isSelected, onSelect, onTimerStart, onTimerPause, onTimerResume }) => {
   const hasHistory   = machine.historicoCriacoes?.length > 0;
   const hasExpress   = machine.tarefas?.some(t => t.texto === 'EXPRESS');
   const otherTasks   = machine.tarefas?.filter(t => t.texto !== 'EXPRESS') || [];
@@ -273,25 +273,51 @@ const MachineCardTechnician = ({ machine, onClick, techColor, isDark, isSelected
         </div>
       )}
 
-      {/* Timer */}
-      {(timerAtivo || timerPausado || timerDone) && timerElapsed !== null && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }} onClick={e => e.stopPropagation()}>
-          {timerAtivo && !timerPausado && (<>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22C55E', boxShadow: '0 0 7px #22C55E' }} />
-            <span style={{ fontSize: '11px', fontFamily: 'monospace', fontWeight: 700, color: '#22C55E' }}>{formatDuration(timerElapsed)}</span>
-            <span style={{ fontSize: '9px', color: SUB, fontFamily: 'monospace' }}>em curso</span>
-          </>)}
-          {timerPausado && (<>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#F59E0B' }} />
-            <span style={{ fontSize: '11px', fontFamily: 'monospace', fontWeight: 700, color: '#F59E0B' }}>{formatDuration(timerElapsed)}</span>
-            <span style={{ fontSize: '9px', color: SUB, fontFamily: 'monospace' }}>pausado</span>
-          </>)}
-          {timerDone && (<>
-            <Clock style={{ width: '9px', height: '9px', color: '#4ADE80' }} />
-            <span style={{ fontSize: '11px', fontFamily: 'monospace', fontWeight: 700, color: '#4ADE80' }}>{formatDuration(timerElapsed)}</span>
-          </>)}
-        </div>
-      )}
+      {/* Timer inline no card */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
+
+        {/* Botão INICIAR — só se sem timer */}
+        {!timerAtivo && !timerPausado && !timerDone && onTimerStart && (
+          <button
+            onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); onTimerStart(machine.id); }}
+            style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '6px', background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.4)', color: '#22C55E', fontFamily: 'monospace', fontSize: '10px', fontWeight: 700, cursor: 'pointer' }}>
+            ▶ INICIAR
+          </button>
+        )}
+
+        {/* Timer ativo */}
+        {timerAtivo && !timerPausado && timerElapsed !== null && (<>
+          <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#22C55E', boxShadow: '0 0 7px #22C55E', flexShrink: 0 }} />
+          <span style={{ fontSize: '12px', fontFamily: 'monospace', fontWeight: 900, color: '#22C55E', letterSpacing: '0.05em' }}>{formatDuration(timerElapsed)}</span>
+          {onTimerPause && (
+            <button
+              onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); onTimerPause(machine.id, timerElapsed / 60); }}
+              style={{ display: 'flex', alignItems: 'center', gap: '3px', padding: '3px 8px', borderRadius: '5px', background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', color: '#F59E0B', fontFamily: 'monospace', fontSize: '9px', fontWeight: 700, cursor: 'pointer' }}>
+              ⏸ PAUSAR
+            </button>
+          )}
+        </>)}
+
+        {/* Timer pausado */}
+        {timerPausado && timerElapsed !== null && (<>
+          <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#F59E0B', flexShrink: 0 }} />
+          <span style={{ fontSize: '12px', fontFamily: 'monospace', fontWeight: 900, color: '#F59E0B', letterSpacing: '0.05em' }}>{formatDuration(timerElapsed)}</span>
+          <span style={{ fontSize: '9px', color: SUB, fontFamily: 'monospace' }}>pausado</span>
+          {onTimerResume && (
+            <button
+              onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); onTimerResume(machine.id); }}
+              style={{ display: 'flex', alignItems: 'center', gap: '3px', padding: '3px 8px', borderRadius: '5px', background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.4)', color: '#22C55E', fontFamily: 'monospace', fontSize: '9px', fontWeight: 700, cursor: 'pointer' }}>
+              ▶ RETOMAR
+            </button>
+          )}
+        </>)}
+
+        {/* Concluído */}
+        {timerDone && timerElapsed !== null && (<>
+          <Clock style={{ width: '10px', height: '10px', color: '#4ADE80' }} />
+          <span style={{ fontSize: '11px', fontFamily: 'monospace', fontWeight: 700, color: '#4ADE80' }}>{formatDuration(timerElapsed)}</span>
+        </>)}
+      </div>
     </button>
   );
 };
@@ -974,7 +1000,7 @@ export default function Dashboard() {
                         <Draggable key={machine.id} draggableId={machine.id} index={index}>
                           {(provided) => (
                             <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} style={{ ...provided.draggableProps.style }}>
-                              <MachineCardTechnician machine={machine} onClick={(m) => { setSelectedMachine(m); setShowObsModal(true); }} techColor={myTech.borderColor} isDark={isDarkMode} isSelected={selectedMachines.some(sm => sm.id === machine.id)} onSelect={handleSelectMachine} />
+                              <MachineCardTechnician machine={machine} onClick={(m) => { setSelectedMachine(m); setShowObsModal(true); }} techColor={myTech.borderColor} isDark={isDarkMode} isSelected={selectedMachines.some(sm => sm.id === machine.id)} onSelect={handleSelectMachine} onTimerStart={handleTimerStart} onTimerPause={handleTimerPause} onTimerResume={handleTimerResume} />
                             </div>
                           )}
                         </Draggable>
@@ -1085,7 +1111,7 @@ export default function Dashboard() {
                             <Draggable key={machine.id} draggableId={machine.id} index={index}>
                               {(provided) => (
                                 <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} style={{ ...provided.draggableProps.style }}>
-                                  <MachineCardTechnician machine={machine} onClick={(m) => { setSelectedMachine(m); setShowObsModal(true); }} techColor={tech.borderColor} isDark={isDarkMode} isSelected={selectedMachines.some(sm => sm.id === machine.id)} onSelect={handleSelectMachine} />
+                                  <MachineCardTechnician machine={machine} onClick={(m) => { setSelectedMachine(m); setShowObsModal(true); }} techColor={tech.borderColor} isDark={isDarkMode} isSelected={selectedMachines.some(sm => sm.id === machine.id)} onSelect={handleSelectMachine} onTimerStart={handleTimerStart} onTimerPause={handleTimerPause} onTimerResume={handleTimerResume} />
                                 </div>
                               )}
                             </Draggable>
@@ -1192,7 +1218,7 @@ export default function Dashboard() {
                             <Draggable key={machine.id} draggableId={machine.id} index={index}>
                               {(provided) => (
                                 <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} style={{ ...provided.draggableProps.style }}>
-                                  <MachineCardTechnician machine={machine} onClick={(m) => { setSelectedMachine(m); setShowObsModal(true); }} techColor={tech.borderColor} isDark={isDarkMode} isSelected={selectedMachines.some(sm => sm.id === machine.id)} onSelect={handleSelectMachine} />
+                                  <MachineCardTechnician machine={machine} onClick={(m) => { setSelectedMachine(m); setShowObsModal(true); }} techColor={tech.borderColor} isDark={isDarkMode} isSelected={selectedMachines.some(sm => sm.id === machine.id)} onSelect={handleSelectMachine} onTimerStart={handleTimerStart} onTimerPause={handleTimerPause} onTimerResume={handleTimerResume} />
                                 </div>
                               )}
                             </Draggable>

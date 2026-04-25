@@ -255,8 +255,8 @@ export default function ObservationsModal({
         {/* BODY SCROLL */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
 
-          {/* TIMER */}
-          {(localMachine.estado?.includes('em-preparacao') || localMachine.timer_inicio) && (
+          {/* TIMER — sempre visível se máquina não concluída */}
+          {localMachine.estado !== 'concluida' && (
             <div style={{ ...s.section, marginBottom: '14px' }}>
               <span style={s.label}>⏱ Timer de Trabalho</span>
               <TimerButton
