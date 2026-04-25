@@ -805,7 +805,7 @@ export default function Dashboard() {
       <div style={{
         position: 'sticky', top: '44px', zIndex: 40,
         display: 'flex', flexDirection: 'column', alignItems: 'center',
-        padding: '10px 0 8px',
+        padding: '14px 0 10px',
         background: isDarkMode
           ? 'linear-gradient(180deg, rgba(9,9,15,0.97) 70%, transparent 100%)'
           : 'linear-gradient(180deg, rgba(244,244,255,0.97) 70%, transparent 100%)',
@@ -818,33 +818,33 @@ export default function Dashboard() {
         <img src="https://media.base44.com/images/public/69c166ad19149fb0c07883cb/a35751fd9_Gemini_Generated_Image_scmohbscmohbscmo1.png"
           alt="WATCHER"
           style={{
-            width: '72px', height: '72px', objectFit: 'contain', position: 'relative',
+            width: '96px', height: '96px', objectFit: 'contain', position: 'relative',
             filter: 'drop-shadow(0 0 14px rgba(255,45,120,0.55)) drop-shadow(0 0 28px rgba(77,159,255,0.18))',
           }}
         />
         {/* [WATCHER] com colchetes neon */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
           <span style={{
-            fontFamily: 'monospace', fontSize: '13px', fontWeight: 900,
+            fontFamily: 'monospace', fontSize: '17px', fontWeight: 900,
             color: D.pink,
             textShadow: `0 0 8px ${D.pink}, 0 0 20px ${D.pink}, 0 0 40px rgba(255,45,120,0.4)`,
             letterSpacing: '0.02em',
           }}>[</span>
           <span style={{
-            fontFamily: 'monospace', fontSize: '13px', fontWeight: 900,
+            fontFamily: 'monospace', fontSize: '17px', fontWeight: 900,
             letterSpacing: '0.22em',
             color: isDarkMode ? '#F0F0FF' : '#0A0A1A',
             textShadow: isDarkMode ? '0 0 16px rgba(255,45,120,0.25)' : 'none',
           }}>WATCHER</span>
           <span style={{
-            fontFamily: 'monospace', fontSize: '13px', fontWeight: 900,
+            fontFamily: 'monospace', fontSize: '17px', fontWeight: 900,
             color: D.pink,
             textShadow: `0 0 8px ${D.pink}, 0 0 20px ${D.pink}, 0 0 40px rgba(255,45,120,0.4)`,
             letterSpacing: '0.02em',
           }}>]</span>
         </div>
         {/* linha neon */}
-        <div style={{ marginTop: '8px', width: '260px', height: '1px', background: `linear-gradient(90deg, transparent, ${D.pink}, ${D.blue}, transparent)`, opacity: 0.3 }} />
+        <div style={{ marginTop: '8px', width: '300px', height: '1px', background: `linear-gradient(90deg, transparent, ${D.pink}, ${D.blue}, transparent)`, opacity: 0.3 }} />
       </div>
 
       {/* ══ TOOLBAR ════════════════════════════════════════════════════════ */}
