@@ -91,9 +91,10 @@ const MachineCardCompact = ({ machine, onClick, isDark, onAssign, showAssignButt
   const LEFT   = isPrio ? '#FF2D78' : isDark ? '#2A2A50' : '#C8C8E8';
 
   return (
-    <div
-      onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (e.ctrlKey||e.metaKey) { onSelect?.(machine); } else { onClick(machine); } }}
+    <button
+      onClick={(e) => { if (e.ctrlKey||e.metaKey) { onSelect?.(machine); } else { onClick(machine); } }}
       style={{
+        width: '100%', textAlign: 'left',
         background: isSelected ? (isDark ? '#1A1A3A' : '#EEF0FF') : BG,
         border: `1px solid ${isSelected ? '#4D9FFF' : BORDER}`,
         borderLeft: `4px solid ${isSelected ? '#4D9FFF' : LEFT}`,
@@ -106,6 +107,7 @@ const MachineCardCompact = ({ machine, onClick, isDark, onAssign, showAssignButt
         boxShadow: isPrio
           ? (isDark ? '0 0 20px rgba(255,45,120,0.22), 0 4px 16px rgba(0,0,0,0.6)' : '0 0 14px rgba(255,45,120,0.14), 0 2px 8px rgba(0,0,0,0.08)')
           : (isDark ? '0 2px 10px rgba(0,0,0,0.5)' : '0 1px 4px rgba(0,0,0,0.07)'),
+        padding: 0,
       }}
     >
       {/* Topo neon prio */}
@@ -195,7 +197,7 @@ const MachineCardCompact = ({ machine, onClick, isDark, onAssign, showAssignButt
       {isDark && (
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '1px', background: isPrio ? 'rgba(255,45,120,0.12)' : 'rgba(77,159,255,0.05)' }} />
       )}
-    </div>
+    </button>
   );
 };
 
@@ -842,27 +844,48 @@ export default function Dashboard() {
         .mini-scroll::-webkit-scrollbar-thumb { background: rgba(74,74,122,0.5); }
       `}</style>
 
-      {/* ══ NAVBAR COMPACTA ══════════════════════════════════════════════ */}
+      {/* ══ HERO FIXO — sticky, centralizado, sempre visível ════════════ */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: '10px',
-        padding: '10px 0 10px',
+        position: 'sticky',
+        top: 0,
+        zIndex: 30,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        padding: '12px 0 10px',
         marginBottom: '10px',
+        background: isDarkMode
+          ? 'rgba(9,9,15,0.96)'
+          : 'rgba(244,244,255,0.96)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
         borderBottom: `1px solid ${D.border}`,
+        marginLeft: '-16px',
+        marginRight: '-16px',
+        paddingLeft: '16px',
+        paddingRight: '16px',
       }}>
         <img
           src="https://media.base44.com/images/public/69c166ad19149fb0c07883cb/a35751fd9_Gemini_Generated_Image_scmohbscmohbscmo1.png"
           alt="WATCHER"
-          style={{ width: '36px', height: '36px', objectFit: 'contain', flexShrink: 0,
-            filter: 'drop-shadow(0 0 8px rgba(255,45,120,0.6))' }}
+          style={{
+            width: '88px', height: '88px', objectFit: 'contain',
+            filter: 'drop-shadow(0 0 14px rgba(255,45,120,0.6)) drop-shadow(0 0 28px rgba(77,159,255,0.2))',
+            display: 'block',
+          }}
         />
-        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-          <span style={{ fontFamily: 'monospace', fontSize: '15px', fontWeight: 900, color: D.pink,
-            textShadow: `0 0 8px ${D.pink}` }}>[</span>
-          <span style={{ fontFamily: 'monospace', fontSize: '15px', fontWeight: 900, letterSpacing: '0.18em',
-            color: D.text }}>WATCHER</span>
-          <span style={{ fontFamily: 'monospace', fontSize: '15px', fontWeight: 900, color: D.pink,
-            textShadow: `0 0 8px ${D.pink}` }}>]</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+          <span style={{ fontFamily: 'monospace', fontSize: '16px', fontWeight: 900, color: D.pink,
+            textShadow: `0 0 10px ${D.pink}` }}>[</span>
+          <span style={{ fontFamily: 'monospace', fontSize: '16px', fontWeight: 900, letterSpacing: '0.2em',
+            color: D.text,
+            textShadow: isDarkMode ? `0 0 16px rgba(255,45,120,0.2)` : 'none' }}>WATCHER</span>
+          <span style={{ fontFamily: 'monospace', fontSize: '16px', fontWeight: 900, color: D.pink,
+            textShadow: `0 0 10px ${D.pink}` }}>]</span>
         </div>
+        <div style={{ marginTop: '6px', width: '240px', height: '1px',
+          background: `linear-gradient(90deg, transparent, ${D.pink}, ${D.blue}, transparent)`,
+          opacity: 0.35 }} />
       </div>
 
       {/* ══ TOOLBAR ════════════════════════════════════════════════════════ */}
