@@ -80,111 +80,121 @@ const MachineCardCompact = ({ machine, onClick, isDark, onAssign, showAssignButt
   const timerAtivo   = machine?.timer_ativo === true;
   const timerPausado = machine?.timer_pausado === true;
   const isPrio       = !!machine.prioridade;
-
-  const surface  = isDark ? (isPrio ? '#130A14' : '#0E0E1C') : (isPrio ? '#FFF5F8' : '#FFFFFF');
-  const textMain = isDark ? '#F0F0FF' : '#0A0A1A';
-  const textSub  = isDark ? '#5A5A8A' : '#9090B0';
-  const divider  = isDark ? '#1A1A2E' : '#EEEEFC';
-
-  const reconColor = machine.recondicao?.bronze && machine.recondicao?.prata ? '#D4AF37'
+  const reconColor   = machine.recondicao?.bronze && machine.recondicao?.prata ? '#D4AF37'
     : machine.recondicao?.bronze ? '#CD7F32'
-    : machine.recondicao?.prata  ? '#9E9E9E' : null;
+    : machine.recondicao?.prata  ? '#C0C0C0' : null;
+
+  const BG     = isDark ? (isPrio ? '#17060E' : '#0B0B16') : (isPrio ? '#FFF2F7' : '#FFFFFF');
+  const TEXT   = isDark ? '#E8E8FF' : '#080818';
+  const SUB    = isDark ? '#505080' : '#8888AA';
+  const BORDER = isPrio ? 'rgba(255,45,120,0.55)' : isDark ? '#1C1C35' : '#DDDDF0';
+  const LEFT   = isPrio ? '#FF2D78' : isDark ? '#2A2A50' : '#C8C8E8';
 
   return (
     <div
-      onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (e.ctrlKey || e.metaKey) { onSelect?.(machine); } else { onClick(machine); } }}
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (e.ctrlKey||e.metaKey) { onSelect?.(machine); } else { onClick(machine); } }}
       style={{
-        background: isSelected ? (isDark ? '#1A1A3A' : '#EEF0FF') : surface,
-        border: `1px solid ${isSelected ? '#4D9FFF' : isPrio ? 'rgba(255,45,120,0.4)' : isDark ? '#1A1A2E' : '#E0E0F0'}`,
-        borderLeft: `4px solid ${isSelected ? '#4D9FFF' : isPrio ? '#FF2D78' : isDark ? '#2A2A4A' : '#D0D0E8'}`,
-        borderRadius: '10px',
+        background: isSelected ? (isDark ? '#1A1A3A' : '#EEF0FF') : BG,
+        border: `1px solid ${isSelected ? '#4D9FFF' : BORDER}`,
+        borderLeft: `4px solid ${isSelected ? '#4D9FFF' : LEFT}`,
+        borderRadius: '8px',
         marginBottom: '8px',
         cursor: 'pointer',
-        transition: 'all 0.15s',
+        transition: 'transform 0.1s, box-shadow 0.1s',
         overflow: 'hidden',
+        position: 'relative',
         boxShadow: isPrio
-          ? (isDark ? '0 0 18px rgba(255,45,120,0.18), 0 3px 10px rgba(0,0,0,0.5)' : '0 0 12px rgba(255,45,120,0.12), 0 2px 6px rgba(0,0,0,0.08)')
-          : (isDark ? '0 2px 8px rgba(0,0,0,0.4)' : '0 1px 4px rgba(0,0,0,0.06)'),
-        display: 'flex', flexDirection: 'column',
+          ? (isDark ? '0 0 20px rgba(255,45,120,0.22), 0 4px 16px rgba(0,0,0,0.6)' : '0 0 14px rgba(255,45,120,0.14), 0 2px 8px rgba(0,0,0,0.08)')
+          : (isDark ? '0 2px 10px rgba(0,0,0,0.5)' : '0 1px 4px rgba(0,0,0,0.07)'),
       }}
     >
-      {/* Topo neon para prioridade */}
-      {isPrio && (
-        <div style={{ height: '2px', background: 'linear-gradient(90deg, #FF2D78, #FF6BA0, transparent)', opacity: 0.85 }} />
-      )}
+      {/* Topo neon prio */}
+      {isPrio && <div style={{ height: '2px', background: 'linear-gradient(90deg, #FF2D78 0%, #FF80AA 60%, transparent 100%)' }} />}
 
-      <div style={{ display: 'flex', alignItems: 'stretch', padding: '12px 14px', gap: '10px' }}>
+      <div style={{ display: 'flex', alignItems: 'stretch', padding: '11px 13px 11px 11px', gap: '10px' }}>
+        {/* Ícones de status à esquerda */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', width: '18px', flexShrink: 0 }}>
+          {isPrio && (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#FF2D78" style={{ filter: 'drop-shadow(0 0 4px #FF2D78)' }}>
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+            </svg>
+          )}
+          {hasExpress && (
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="#F59E0B" style={{ filter: 'drop-shadow(0 0 4px #F59E0B)' }}>
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+            </svg>
+          )}
+          {hasHistory && <Repeat style={{ width: '10px', height: '10px', color: '#4D9FFF' }} />}
+          {machine.aguardaPecas && <Package style={{ width: '10px', height: '10px', color: '#F59E0B' }} />}
+        </div>
+
         <div style={{ flex: 1, minWidth: 0 }}>
-
-          {/* Linha 1: modelo + ano + badges */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap', marginBottom: '5px' }}>
-            <span style={{ fontSize: '11px', fontFamily: 'monospace', color: textSub, letterSpacing: '0.04em' }}>{machine.modelo}</span>
-            {machine.ano && <span style={{ fontSize: '10px', fontFamily: 'monospace', color: textSub, opacity: 0.55 }}>{machine.ano}</span>}
-            {isPrio && (
-              <span style={{
-                fontSize: '9px', fontWeight: 800, padding: '2px 7px', borderRadius: '4px',
-                background: 'rgba(255,45,120,0.18)', color: '#FF2D78', fontFamily: 'monospace',
-                border: '1px solid rgba(255,45,120,0.4)', letterSpacing: '0.08em',
-                textShadow: '0 0 6px rgba(255,45,120,0.5)',
-              }}>⚡ PRIO</span>
-            )}
-            {hasExpress && (
-              <span style={{ fontSize: '9px', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', background: 'rgba(245,158,11,0.15)', color: '#F59E0B', fontFamily: 'monospace', border: '1px solid rgba(245,158,11,0.3)' }}>EXPRESS</span>
-            )}
+          {/* Modelo + ano */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '10px', fontFamily: 'monospace', color: SUB, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{machine.modelo}</span>
+            {machine.ano && <span style={{ fontSize: '9px', fontFamily: 'monospace', color: SUB, opacity: 0.5 }}>{machine.ano}</span>}
             {reconColor && (
-              <span style={{ fontSize: '9px', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', background: `${reconColor}20`, color: reconColor, fontFamily: 'monospace', border: `1px solid ${reconColor}40` }}>
+              <span style={{ fontSize: '8px', fontWeight: 700, padding: '1px 5px', borderRadius: '3px', background: `${reconColor}22`, color: reconColor, fontFamily: 'monospace', border: `1px solid ${reconColor}50` }}>
                 {machine.recondicao?.bronze && machine.recondicao?.prata ? 'BRZ+PRT' : machine.recondicao?.bronze ? 'BRZ' : 'PRT'}
               </span>
             )}
-            {hasHistory && <Repeat style={{ width: '10px', height: '10px', color: '#4D9FFF', flexShrink: 0 }} />}
-            {machine.aguardaPecas && <Package style={{ width: '10px', height: '10px', color: '#F59E0B', flexShrink: 0 }} />}
           </div>
 
-          {/* Linha 2: série — destaque principal */}
+          {/* Série — HERO */}
           <div style={{
-            fontFamily: 'monospace', fontSize: '17px', fontWeight: 800,
-            color: isPrio ? '#FF2D78' : textMain,
-            letterSpacing: '0.07em', marginBottom: '6px', lineHeight: 1.1,
-            textShadow: isPrio && isDark ? '0 0 14px rgba(255,45,120,0.4)' : 'none',
+            fontFamily: 'monospace', fontSize: '16px', fontWeight: 900,
+            color: isPrio ? '#FF2D78' : TEXT,
+            letterSpacing: '0.08em', lineHeight: 1.1, marginBottom: '5px',
+            textShadow: isPrio && isDark ? '0 0 16px rgba(255,45,120,0.5)' : 'none',
           }}>
             {machine.serie}
           </div>
 
-          {/* Linha 3: tarefas */}
+          {/* Badges de tarefa */}
           {otherTasks.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '6px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px', marginBottom: '5px' }}>
               {otherTasks.map((t, i) => (
-                <span key={i} style={{ fontSize: '9px', fontWeight: 600, padding: '2px 7px', borderRadius: '4px', background: isDark ? 'rgba(77,159,255,0.12)' : 'rgba(77,159,255,0.09)', color: '#4D9FFF', fontFamily: 'monospace', border: '1px solid rgba(77,159,255,0.22)' }}>{t.texto}</span>
+                <span key={i} style={{
+                  fontSize: '9px', fontWeight: 700, padding: '2px 6px', borderRadius: '3px',
+                  background: isDark ? 'rgba(77,159,255,0.12)' : 'rgba(77,159,255,0.09)',
+                  color: '#4D9FFF', fontFamily: 'monospace', border: '1px solid rgba(77,159,255,0.25)',
+                  textTransform: 'uppercase', letterSpacing: '0.06em',
+                }}>{t.texto}</span>
               ))}
             </div>
           )}
 
-          {/* Linha 4: timer */}
+          {/* Timer */}
           {timerElapsed !== null && (timerAtivo || timerPausado) && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: timerPausado ? '#F59E0B' : '#22C55E', display: 'inline-block', boxShadow: !timerPausado ? '0 0 7px #22C55E' : 'none' }} />
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: timerPausado ? '#F59E0B' : '#22C55E', boxShadow: !timerPausado ? '0 0 7px #22C55E' : 'none' }} />
               <span style={{ fontSize: '11px', fontFamily: 'monospace', fontWeight: 700, color: timerPausado ? '#F59E0B' : '#22C55E', letterSpacing: '0.06em' }}>{formatDuration(timerElapsed)}</span>
-              {timerPausado && <span style={{ fontSize: '9px', color: textSub, fontFamily: 'monospace' }}>pausado</span>}
+              {timerPausado && <span style={{ fontSize: '9px', color: SUB, fontFamily: 'monospace' }}>pausado</span>}
             </div>
           )}
           {!timerAtivo && !timerPausado && machine.timer_duracao_minutos != null && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <Clock style={{ width: '10px', height: '10px', color: '#4ADE80' }} />
-              <span style={{ fontSize: '11px', fontFamily: 'monospace', fontWeight: 700, color: '#4ADE80' }}>{formatDuration(machine.timer_duracao_minutos * 60)}</span>
+              <Clock style={{ width: '9px', height: '9px', color: '#4ADE80' }} />
+              <span style={{ fontSize: '10px', fontFamily: 'monospace', fontWeight: 700, color: '#4ADE80' }}>{formatDuration(machine.timer_duracao_minutos * 60)}</span>
             </div>
           )}
         </div>
 
-        {/* BOTÃO ATRIBUIR */}
+        {/* Botão atribuir */}
         {showAssignButton && onAssign && (
           <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAssign(machine); }}>
-            <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: `linear-gradient(135deg, #FF2D78, #9B5CF6)`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 0 12px rgba(255,45,120,0.35)' }}>
-              <ChevronRight style={{ width: '18px', height: '18px', color: 'white' }} />
+            <div style={{ width: '32px', height: '32px', borderRadius: '6px', background: 'linear-gradient(135deg, #FF2D78, #9B5CF6)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 0 10px rgba(255,45,120,0.4)', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <ChevronRight style={{ width: '16px', height: '16px', color: 'white' }} />
             </div>
           </div>
         )}
       </div>
+
+      {/* Linha escanline decorativa cyberpunk (fundo) */}
+      {isDark && (
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '1px', background: isPrio ? 'rgba(255,45,120,0.12)' : 'rgba(77,159,255,0.05)' }} />
+      )}
     </div>
   );
 };
@@ -199,78 +209,81 @@ const MachineCardTechnician = ({ machine, onClick, techColor, isDark, isSelected
   const timerElapsed = useElapsedTimer(machine);
   const isPrio       = !!machine.prioridade;
 
-  const surface  = isDark ? (isPrio ? '#130A14' : '#0E0E1C') : (isPrio ? '#FFF5F8' : '#FFFFFF');
-  const textMain = isDark ? '#F0F0FF' : '#0A0A1A';
-  const textSub  = isDark ? '#5A5A8A' : '#9090B0';
+  const BG   = isDark ? (isPrio ? '#17060E' : '#0B0B16') : (isPrio ? '#FFF2F7' : '#FFFFFF');
+  const TEXT = isDark ? '#E8E8FF' : '#080818';
+  const SUB  = isDark ? '#505080' : '#8888AA';
 
   return (
     <button
-      onClick={(e) => { if (e.ctrlKey || e.metaKey) { onSelect?.(machine); } else { onClick(machine); } }}
+      onClick={(e) => { if (e.ctrlKey||e.metaKey) { onSelect?.(machine); } else { onClick(machine); } }}
       style={{
         width: '100%', textAlign: 'left', cursor: 'pointer',
-        background: isSelected ? (isDark ? '#1A1A3A' : '#EEF0FF') : surface,
-        border: `1px solid ${isSelected ? '#4D9FFF' : isPrio ? 'rgba(255,45,120,0.4)' : isDark ? '#1A1A2E' : '#E0E0F0'}`,
+        background: isSelected ? (isDark ? '#1A1A3A' : '#EEF0FF') : BG,
+        border: `1px solid ${isSelected ? '#4D9FFF' : isPrio ? 'rgba(255,45,120,0.55)' : isDark ? '#1C1C35' : '#DDDDF0'}`,
         borderLeft: `4px solid ${isSelected ? '#4D9FFF' : isPrio ? '#FF2D78' : techColor}`,
-        borderRadius: '10px',
-        padding: '12px 13px',
+        borderRadius: '8px',
+        padding: '11px 12px',
         marginBottom: '8px',
         boxShadow: isPrio
-          ? (isDark ? '0 0 18px rgba(255,45,120,0.18), 0 3px 10px rgba(0,0,0,0.5)' : '0 0 12px rgba(255,45,120,0.12)')
-          : (isDark ? '0 2px 8px rgba(0,0,0,0.4)' : '0 1px 4px rgba(0,0,0,0.06)'),
+          ? (isDark ? '0 0 20px rgba(255,45,120,0.22), 0 4px 16px rgba(0,0,0,0.6)' : '0 0 14px rgba(255,45,120,0.14)')
+          : (isDark ? '0 2px 10px rgba(0,0,0,0.5)' : '0 1px 4px rgba(0,0,0,0.07)'),
         transition: 'all 0.12s',
-        display: 'flex', flexDirection: 'column', gap: '5px',
-        overflow: 'hidden', position: 'relative',
+        position: 'relative', overflow: 'hidden',
+        display: 'flex', flexDirection: 'column', gap: '4px',
       }}
     >
-      {/* topo neon prio */}
-      {isPrio && (
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: 'linear-gradient(90deg, #FF2D78, #FF6BA0, transparent)' }} />
-      )}
+      {isPrio && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: 'linear-gradient(90deg, #FF2D78 0%, #FF80AA 60%, transparent 100%)' }} />}
 
-      {/* modelo + badges */}
+      {/* Linha 1: modelo + ícones */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
-        <span style={{ fontSize: '11px', fontFamily: 'monospace', color: textSub }}>{machine.modelo}</span>
-        {machine.ano && <span style={{ fontSize: '10px', fontFamily: 'monospace', color: textSub, opacity: 0.5 }}>{machine.ano}</span>}
+        <span style={{ fontSize: '10px', fontFamily: 'monospace', color: SUB, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{machine.modelo}</span>
+        {machine.ano && <span style={{ fontSize: '9px', fontFamily: 'monospace', color: SUB, opacity: 0.5 }}>{machine.ano}</span>}
         {isPrio && (
-          <span style={{ fontSize: '9px', fontWeight: 800, padding: '2px 7px', borderRadius: '4px', background: 'rgba(255,45,120,0.18)', color: '#FF2D78', fontFamily: 'monospace', border: '1px solid rgba(255,45,120,0.4)', letterSpacing: '0.08em', textShadow: '0 0 6px rgba(255,45,120,0.5)' }}>⚡ PRIO</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="#FF2D78" style={{ filter: 'drop-shadow(0 0 4px #FF2D78)', flexShrink: 0 }}>
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+          </svg>
         )}
-        {hasExpress && <span style={{ fontSize: '9px', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', background: 'rgba(245,158,11,0.15)', color: '#F59E0B', fontFamily: 'monospace', border: '1px solid rgba(245,158,11,0.3)' }}>EXPRESS</span>}
-        {hasHistory && <Repeat style={{ width: '10px', height: '10px', color: '#4D9FFF' }} />}
-        {machine.aguardaPecas && <Package style={{ width: '10px', height: '10px', color: '#F59E0B' }} />}
+        {hasExpress && (
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="#F59E0B" style={{ filter: 'drop-shadow(0 0 3px #F59E0B)', flexShrink: 0 }}>
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+          </svg>
+        )}
+        {hasHistory && <Repeat style={{ width: '9px', height: '9px', color: '#4D9FFF' }} />}
+        {machine.aguardaPecas && <Package style={{ width: '9px', height: '9px', color: '#F59E0B' }} />}
       </div>
 
-      {/* série */}
+      {/* Série */}
       <div style={{
-        fontFamily: 'monospace', fontSize: '17px', fontWeight: 800,
-        color: isPrio ? '#FF2D78' : textMain,
-        letterSpacing: '0.06em', lineHeight: 1.1,
-        textShadow: isPrio && isDark ? '0 0 14px rgba(255,45,120,0.4)' : 'none',
+        fontFamily: 'monospace', fontSize: '16px', fontWeight: 900,
+        color: isPrio ? '#FF2D78' : TEXT,
+        letterSpacing: '0.07em', lineHeight: 1.1,
+        textShadow: isPrio && isDark ? '0 0 16px rgba(255,45,120,0.5)' : 'none',
       }}>{machine.serie}</div>
 
-      {/* tarefas */}
+      {/* Tarefas */}
       {otherTasks.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
           {otherTasks.map((t, i) => (
-            <span key={i} style={{ fontSize: '9px', fontWeight: 600, padding: '2px 7px', borderRadius: '4px', background: isDark ? 'rgba(77,159,255,0.12)' : 'rgba(77,159,255,0.09)', color: '#4D9FFF', fontFamily: 'monospace', border: '1px solid rgba(77,159,255,0.22)' }}>{t.texto}</span>
+            <span key={i} style={{ fontSize: '9px', fontWeight: 700, padding: '2px 6px', borderRadius: '3px', background: isDark ? 'rgba(77,159,255,0.12)' : 'rgba(77,159,255,0.09)', color: '#4D9FFF', fontFamily: 'monospace', border: '1px solid rgba(77,159,255,0.25)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t.texto}</span>
           ))}
         </div>
       )}
 
-      {/* timer */}
+      {/* Timer */}
       {(timerAtivo || timerPausado || timerDone) && timerElapsed !== null && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }} onClick={e => e.stopPropagation()}>
           {timerAtivo && !timerPausado && (<>
             <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22C55E', boxShadow: '0 0 7px #22C55E' }} />
             <span style={{ fontSize: '11px', fontFamily: 'monospace', fontWeight: 700, color: '#22C55E' }}>{formatDuration(timerElapsed)}</span>
-            <span style={{ fontSize: '9px', color: textSub, fontFamily: 'monospace' }}>em curso</span>
+            <span style={{ fontSize: '9px', color: SUB, fontFamily: 'monospace' }}>em curso</span>
           </>)}
           {timerPausado && (<>
             <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#F59E0B' }} />
             <span style={{ fontSize: '11px', fontFamily: 'monospace', fontWeight: 700, color: '#F59E0B' }}>{formatDuration(timerElapsed)}</span>
-            <span style={{ fontSize: '9px', color: textSub, fontFamily: 'monospace' }}>pausado</span>
+            <span style={{ fontSize: '9px', color: SUB, fontFamily: 'monospace' }}>pausado</span>
           </>)}
           {timerDone && (<>
-            <Clock style={{ width: '10px', height: '10px', color: '#4ADE80' }} />
+            <Clock style={{ width: '9px', height: '9px', color: '#4ADE80' }} />
             <span style={{ fontSize: '11px', fontFamily: 'monospace', fontWeight: 700, color: '#4ADE80' }}>{formatDuration(timerElapsed)}</span>
           </>)}
         </div>
@@ -839,6 +852,7 @@ export default function Dashboard() {
           : 'linear-gradient(180deg, rgba(244,244,255,0.97) 70%, transparent 100%)',
         backdropFilter: 'blur(12px)',
         pointerEvents: 'none',
+        marginBottom: '8px',
       }}>
         {/* aura glow */}
         <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '180px', height: '120px', background: 'radial-gradient(ellipse, rgba(255,45,120,0.09) 0%, transparent 70%)', pointerEvents: 'none' }} />
@@ -876,7 +890,7 @@ export default function Dashboard() {
       </div>
 
       {/* ══ TOOLBAR ════════════════════════════════════════════════════════ */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', marginBottom: '10px', position: 'relative', zIndex: 50 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
           <PedidosPanel userPermissions={userPermissions} isCompact={true} />
           {userPermissions?.canDeleteMachine && <OSNotificationsPanel userPermissions={userPermissions} />}
@@ -991,7 +1005,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* ROW 2 — CONCLUÍDA (menor, grid horizontal) */}
+            {/* ROW 2 — CONCLUÍDA */}
             <div style={{ ...panel(D.green), marginBottom: '12px' }}>
               <div style={{ ...hdr(D.green) }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1004,34 +1018,37 @@ export default function Dashboard() {
               <Droppable droppableId="concluida-geral">
                 {(provided) => (
                   <div ref={provided.innerRef} {...provided.droppableProps}
-                    style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '5px', padding: '8px', maxHeight: '180px', overflowY: 'auto' }}>
-                    {allConcluidaMachines.map((machine, index) => (
-                      <Draggable key={machine.id} draggableId={`concluida-${machine.id}`} index={index} isDragDisabled={!userPermissions?.canMoveAnyMachine}>
-                        {(provided) => (
-                          <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} style={{ ...provided.draggableProps.style }}>
-                            <button onClick={() => { setSelectedMachine(machine); setShowObsModal(true); }}
-                              style={{ width: '100%', textAlign: 'left', cursor: 'pointer', background: isDarkMode ? '#0A0A14' : '#F8F8FF', border: `1px solid ${D.border}`, borderLeft: `3px solid ${machine.tecnico ? TECHNICIANS.find(t => t.id === machine.tecnico)?.borderColor : D.green}`, borderRadius: '6px', padding: '7px 9px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
-                              <div>
-                                <div style={{ fontFamily: 'monospace', fontSize: '9px', color: D.muted }}>{machine.modelo}</div>
-                                <div style={{ fontFamily: 'monospace', fontSize: '11px', fontWeight: 700, color: D.text }}>{machine.serie}</div>
-                              </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                                <span style={{ fontSize: '8px', color: D.muted, fontFamily: 'monospace', textTransform: 'uppercase' }}>{machine.tecnico || ''}</span>
-                                <CheckCircle2 style={{ width: '11px', height: '11px', color: D.green }} />
-                              </div>
-                            </button>
-                          </div>
-                        )}
-                      </Draggable>
-                    ))}
+                    style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '6px', padding: '10px', maxHeight: '220px', overflowY: 'auto' }}>
+                    {allConcluidaMachines.map((machine, index) => {
+                      const tc = TECHNICIANS.find(t => t.id === machine.tecnico);
+                      return (
+                        <Draggable key={machine.id} draggableId={`concluida-${machine.id}`} index={index} isDragDisabled={!userPermissions?.canMoveAnyMachine}>
+                          {(provided) => (
+                            <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} style={{ ...provided.draggableProps.style }}>
+                              <button onClick={() => { setSelectedMachine(machine); setShowObsModal(true); }}
+                                style={{ width: '100%', textAlign: 'left', cursor: 'pointer', background: isDarkMode ? '#0B0B16' : '#F8F8FF', border: `1px solid ${D.border}`, borderLeft: `4px solid ${tc?.borderColor || D.green}`, borderRadius: '8px', padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', boxShadow: isDarkMode ? '0 2px 8px rgba(0,0,0,0.4)' : '0 1px 4px rgba(0,0,0,0.06)' }}>
+                                <div>
+                                  <div style={{ fontFamily: 'monospace', fontSize: '10px', color: D.muted, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '3px' }}>{machine.modelo}</div>
+                                  <div style={{ fontFamily: 'monospace', fontSize: '14px', fontWeight: 900, color: D.text, letterSpacing: '0.06em' }}>{machine.serie}</div>
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px', flexShrink: 0 }}>
+                                  {tc && <span style={{ fontSize: '9px', color: tc.borderColor, fontFamily: 'monospace', fontWeight: 700, textTransform: 'uppercase' }}>{tc.name}</span>}
+                                  <CheckCircle2 style={{ width: '14px', height: '14px', color: D.green }} />
+                                </div>
+                              </button>
+                            </div>
+                          )}
+                        </Draggable>
+                      );
+                    })}
                     {provided.placeholder}
                   </div>
                 )}
               </Droppable>
             </div>
 
-            {/* ROW 3 — OUTROS TÉCNICOS (mini) */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '8px' }}>
+            {/* ROW 3 — OUTROS TÉCNICOS (fill restante da largura) */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '10px' }}>
               {otherTechs.map(tech => {
                 const emPrep = machines.filter(m => !m.arquivada && m.estado === `em-preparacao-${tech.id}`);
                 const concl  = machines.filter(m => !m.arquivada && m.estado === `concluida-${tech.id}`);
