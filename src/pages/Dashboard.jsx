@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { FrotaACP, Pedido } from "@/entities/all";
 import { Plus, Camera, Search, Wrench, User as UserIcon, Package, Sparkles, Repeat, CheckCircle2, ChevronDown, ChevronUp, Clock, Maximize2, Minimize2, HardDrive, AlertTriangle, ChevronRight, Sun, Moon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -448,6 +448,20 @@ export default function Dashboard() {
   const [showPatrickLegacy, setShowPatrickLegacy] = useState(false);
 
   const userPermissions = usePermissions(currentUser?.perfil, currentUser?.nome_tecnico);
+  const heroRef = useRef(null);
+
+  // Medir altura real do hero e ajustar spacer dinamicamente
+  useEffect(() => {
+    const updateHeroHeight = () => {
+      if (heroRef.current) {
+        const h = heroRef.current.offsetHeight;
+        document.documentElement.style.setProperty('--hero-height', h + 'px');
+      }
+    };
+    updateHeroHeight();
+    window.addEventListener('resize', updateHeroHeight);
+    return () => window.removeEventListener('resize', updateHeroHeight);
+  }, []);
 
 
 
@@ -887,7 +901,7 @@ export default function Dashboard() {
   const scroll = (maxH) => ({ padding: '6px 8px', overflowY: 'auto', maxHeight: maxH, minHeight: '40px' });
 
   return (
-    <div style={{ minHeight: '100vh', padding: '0 0 60px', overflowX: 'hidden', maxWidth: '100vw' }}>
+    <div style={{ minHeight: '100vh', padding: '0 0 60px', overflowX: 'hidden', maxWidth: '100vw', boxSizing: 'border-box' }}>
       <style>{`
         ::-webkit-scrollbar { width: 3px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -901,7 +915,7 @@ export default function Dashboard() {
       `}</style>
 
       {/* ══ HERO — fixo no topo, centralizado ════════════════════════ */}
-      <div style={{
+      <div ref={heroRef} style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 90,
         display: 'flex', flexDirection: 'column', alignItems: 'center',
         padding: '18px 16px 14px',
@@ -940,8 +954,8 @@ export default function Dashboard() {
         <div style={{ marginTop: '10px', width: '200px', height: '1px', background: `linear-gradient(90deg, transparent, ${D.pink} 30%, ${D.blue} 70%, transparent)`, opacity: isDarkMode ? 0.7 : 0.4 }} />
       </div>
 
-      {/* Spacer para compensar o hero fixed */}
-      <div style={{ height: '160px', flexShrink: 0 }} />
+      {/* Spacer para compensar o hero fixed — altura calculada pelo ref */}
+      <div id="hero-spacer" style={{ height: 'var(--hero-height, 165px)', flexShrink: 0 }} />
 
       {/* ══ TOOLBAR ADMIN — separada do logo, rola com a página ════════ */}
       {(userPermissions?.canCreateMachine || userPermissions?.canDeleteMachine) && (
