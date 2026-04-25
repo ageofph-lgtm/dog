@@ -124,7 +124,7 @@ export default function Layout({ children }) {
       <img src={LOGO_URL} alt="WATCHER" style={{ width: '88px', height: '88px', objectFit: 'contain', filter: 'drop-shadow(0 0 28px rgba(255,45,120,0.7)) drop-shadow(0 0 8px rgba(255,45,120,0.4))' }} />
       <div style={{ textAlign: 'center' }}>
         <div style={{ fontFamily: "'Orbitron', monospace", fontSize: '26px', fontWeight: 900, letterSpacing: '0.28em', color: '#FF2D78', textShadow: '0 0 20px rgba(255,45,120,0.8), 0 0 40px rgba(255,45,120,0.4)' }}>WATCHER</div>
-        <div style={{ fontFamily: 'monospace', fontSize: '9px', color: '#5A5A8A', letterSpacing: '0.2em', marginTop: '6px', textTransform: 'uppercase' }}>SYSTEM BOOT · JORDAN PROTOCOL</div>
+        <div style={{ fontFamily: 'monospace', fontSize: '9px', color: '#5A5A8A', letterSpacing: '0.2em', marginTop: '6px', textTransform: 'uppercase' }}>SYSTEM BOOT</div>
       </div>
 
       {/* Barra de loading */}

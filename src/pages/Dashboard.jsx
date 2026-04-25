@@ -902,7 +902,7 @@ export default function Dashboard() {
 
       {/* ══ HERO — fixo no topo, centralizado ════════════════════════ */}
       <div style={{
-        position: 'sticky', top: 0, zIndex: 90,
+        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 90,
         display: 'flex', flexDirection: 'column', alignItems: 'center',
         padding: '18px 16px 14px',
         background: isDarkMode
@@ -936,14 +936,12 @@ export default function Dashboard() {
           <span style={{ fontFamily: "'Orbitron', monospace", fontSize: '20px', fontWeight: 900, color: D.pink, textShadow: isDarkMode ? `0 0 16px rgba(255,45,120,0.9), 0 0 32px rgba(255,45,120,0.4)` : 'none' }}>]</span>
         </div>
 
-        {/* Subtítulo */}
-        <div style={{ fontFamily: 'monospace', fontSize: '8px', color: D.muted, letterSpacing: '0.18em', marginTop: '3px', textTransform: 'uppercase' }}>
-          Jordan Protocol · v2.0
-        </div>
-
         {/* Linha divisória decorativa */}
         <div style={{ marginTop: '10px', width: '200px', height: '1px', background: `linear-gradient(90deg, transparent, ${D.pink} 30%, ${D.blue} 70%, transparent)`, opacity: isDarkMode ? 0.7 : 0.4 }} />
       </div>
+
+      {/* Spacer para compensar o hero fixed */}
+      <div style={{ height: '160px', flexShrink: 0 }} />
 
       {/* ══ TOOLBAR ADMIN — separada do logo, rola com a página ════════ */}
       {(userPermissions?.canCreateMachine || userPermissions?.canDeleteMachine) && (
