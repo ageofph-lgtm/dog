@@ -501,6 +501,24 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, [loadMachines]);
 
+  // Subscrição em tempo real para mudanças de máquinas
+  useEffect(() => {
+    let unsubscribe = null;
+    const subscribe = async () => {
+      try {
+        unsubscribe = await FrotaACP.subscribe((event) => {
+          if (event.type === 'update' || event.type === 'create') {
+            loadMachines();
+          }
+        });
+      } catch (e) {
+        console.warn('Subscrição em tempo real indisponível:', e.message);
+      }
+    };
+    subscribe();
+    return () => { if (unsubscribe) unsubscribe(); };
+  }, [loadMachines]);
+
   const handleCreateMachine = async (machineData) => {
     try {
       const existingMachines = await FrotaACP.list();
@@ -746,6 +764,8 @@ export default function Dashboard() {
       clearTimerLocal(machineId); // timer concluído — limpar localStorage
       setMachines(prev => prev.map(m => m.id === machineId ? { ...m, ...data } : m));
       await FrotaACP.update(machineId, data);
+      // Recarregar imediatamente para garantir que todos os utilizadores veem o timer finalizado
+      setTimeout(() => loadMachines(), 500);
     } catch (e) { console.error("Erro ao parar timer:", e); await loadMachines(); }
   };
 

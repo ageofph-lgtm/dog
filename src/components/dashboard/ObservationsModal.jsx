@@ -72,12 +72,19 @@ export default function ObservationsModal({
   };
 
   // ── sync allMachines ───────────────────────────────────────────────────
+  // Sincroniza o estado local com a DB, mas apenas sobrescreve timer se a DB
+  // ainda não confirmou a mudança (race condition). Se a DB tem timer_fim
+  // definido, significa que o timer foi finalizado — aceitar a DB.
   useEffect(() => {
     if (machine && allMachines) {
       const updated = allMachines.find(m => m.id === machine.id) || machine;
       setLocalMachine(prev => {
         if (!prev) return updated;
-        if (prev.timer_ativo && !updated.timer_ativo) {
+        // Se a DB tem timer_fim definido, o timer foi finalizado — usar DB
+        if (updated.timer_fim) return updated;
+        // Se local tem timer ativo mas DB não, pode ser race condition
+        // (DB ainda não propagou). Manter local por até 5 minutos.
+        if (prev.timer_ativo && !updated.timer_ativo && !updated.timer_fim) {
           const merged = { ...updated };
           TIMER_FIELDS.forEach(f => { merged[f] = prev[f]; });
           return merged;
@@ -257,8 +264,8 @@ export default function ObservationsModal({
         {/* BODY SCROLL */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
 
-          {/* TIMER — sempre visível se máquina não concluída */}
-          {localMachine.estado !== 'concluida' && (
+          {/* TIMER — sempre visível se houver dados de timer ou se máquina está em preparação */}
+          {(localMachine.estado?.includes('em-preparacao') || localMachine.timer_inicio) && (
             <div style={{ ...s.section, marginBottom: '14px' }}>
               <span style={s.label}>⏱ Timer de Trabalho</span>
               <TimerButton
