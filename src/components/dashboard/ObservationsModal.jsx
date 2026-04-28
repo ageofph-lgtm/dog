@@ -78,19 +78,7 @@ export default function ObservationsModal({
   useEffect(() => {
     if (machine && allMachines) {
       const updated = allMachines.find(m => m.id === machine.id) || machine;
-      setLocalMachine(prev => {
-        if (!prev) return updated;
-        // Se a DB tem timer_fim definido, o timer foi finalizado — usar DB
-        if (updated.timer_fim) return updated;
-        // Se local tem timer ativo mas DB não, pode ser race condition
-        // (DB ainda não propagou). Manter local por até 5 minutos.
-        if (prev.timer_ativo && !updated.timer_ativo && !updated.timer_fim) {
-          const merged = { ...updated };
-          TIMER_FIELDS.forEach(f => { merged[f] = prev[f]; });
-          return merged;
-        }
-        return updated;
-      });
+      setLocalMachine(updated);
     } else { setLocalMachine(machine); }
   }, [machine, allMachines]);
 

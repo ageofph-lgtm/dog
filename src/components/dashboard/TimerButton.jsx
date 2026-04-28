@@ -28,70 +28,22 @@ export function formatDateTime(isoString) {
 }
 
 // ─── Persistência local do timer ─────────────────────────────────────────────
-// Grava/lê o estado do timer no localStorage como fallback para reloads/updates
-const LS_KEY = (id) => `watcher_timer_${id}`;
-
-export function saveTimerLocal(machine) {
-  if (!machine?.id) return;
-  const snapshot = {
-    timer_ativo:            machine.timer_ativo,
-    timer_pausado:          machine.timer_pausado,
-    timer_inicio:           machine.timer_inicio,
-    timer_acumulado:        machine.timer_acumulado,
-    timer_fim:              machine.timer_fim,
-    timer_duracao_minutos:  machine.timer_duracao_minutos,
-    saved_at:               Date.now(),
-  };
-  try { localStorage.setItem(LS_KEY(machine.id), JSON.stringify(snapshot)); }
-  catch(e) {}
-}
-
-export function clearTimerLocal(machineId) {
-  try { localStorage.removeItem(LS_KEY(machineId)); } catch(e) {}
-}
-
-// Devolve campos de timer mesclando DB + localStorage
-// Regra: se DB tem timer_ativo=false mas local tem timer_ativo=true
-// e o local foi salvo há menos de 5 minutos → usar local (DB ainda não propagou)
-export function resolveTimerFields(machine) {
-  if (!machine?.id) return machine;
-  try {
-    const raw = localStorage.getItem(LS_KEY(machine.id));
-    if (!raw) return machine;
-    const local = JSON.parse(raw);
-    const ageMs = Date.now() - (local.saved_at || 0);
-    const dbAtivo    = machine.timer_ativo === true;
-    const localAtivo = local.timer_ativo  === true;
-    // Se DB confirma ativo: usar DB (está atualizada)
-    if (dbAtivo) {
-      // Limpar local se DB já tem dados mais recentes (timer_inicio bate)
-      if (machine.timer_inicio === local.timer_inicio) clearTimerLocal(machine.id);
-      return machine;
-    }
-    // DB diz inativo mas local diz ativo + recente → usar local
-    if (localAtivo && ageMs < 5 * 60 * 1000) {
-      return { ...machine, ...local };
-    }
-    // Local antigo ou inativo — confiar na DB e limpar
-    clearTimerLocal(machine.id);
-    return machine;
-  } catch(e) { return machine; }
-}
+// (Removida para garantir que o estado da DB seja a única fonte de verdade)
+export function saveTimerLocal(machine) {}
+export function clearTimerLocal(machineId) {}
+export function resolveTimerFields(machine) { return machine; }
 
 // ─── Hook de elapsed ────────────────────────────────────────────────────────
 // Retorna segundos decorridos em tempo real.
 // Usa machineRef para evitar stale closures no setInterval.
 
-export function useElapsedTimer(machineRaw) {
-  // Resolver campos de timer: DB + localStorage fallback
-  const machine = resolveTimerFields(machineRaw);
-
+export function useElapsedTimer(machine) {
   const timerRef   = useRef(null);
   const machineRef = useRef(machine);
   const [elapsed, setElapsed] = useState(() => computeElapsed(machine));
 
   // Sincronizar o ref sempre que a prop muda (sem criar dependência no effect)
-  useEffect(() => { machineRef.current = resolveTimerFields(machineRef.current.__raw || machineRaw); });
+  useEffect(() => { machineRef.current = machine; });
 
   useEffect(() => {
     clearInterval(timerRef.current);
@@ -101,7 +53,7 @@ export function useElapsedTimer(machineRaw) {
     const pausado = machine?.timer_pausado === true;
 
     if (ativo && !pausado) {
-      const tick = () => setElapsed(computeElapsed(resolveTimerFields(machineRef.current)));
+      const tick = () => setElapsed(computeElapsed(machineRef.current));
       tick();
       timerRef.current = setInterval(tick, 1000);
     } else {

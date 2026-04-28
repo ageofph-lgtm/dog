@@ -470,24 +470,7 @@ export default function Dashboard() {
   const loadMachines = useCallback(async () => {
     try {
       const data = await FrotaACP.list('-created_date');
-      setMachines(prev => {
-        if (!prev || prev.length === 0) return data;
-        return data.map(fresh => {
-          const local = prev.find(m => m.id === fresh.id);
-          if (!local) return fresh;
-          // Preservar campos de timer locais se:
-          // 1. Local tem timer ativo E DB ainda não confirmou, OU
-          // 2. DB tem timer ativo (normal merge, manter campos da DB)
-          const localAtivo = local.timer_ativo === true;
-          const freshAtivo = fresh.timer_ativo === true;
-          if (localAtivo && !freshAtivo) {
-            // Race condition: DB ainda não propagou — manter estado local
-            return { ...fresh, ...Object.fromEntries(TIMER_FIELDS.map(f => [f, local[f]])) };
-          }
-          // DB confirmou — usar dados frescos (inclui timer da DB se ativo)
-          return fresh;
-        });
-      });
+      setMachines(data);
     } catch (error) { console.error("Erro ao carregar máquinas:", error); }
     setIsLoading(false);
   }, []);
@@ -721,14 +704,8 @@ export default function Dashboard() {
     try {
       const now = new Date().toISOString();
       const data = { timer_inicio: now, timer_ativo: true, timer_pausado: false, timer_fim: null, timer_duracao_minutos: null, timer_acumulado: 0 };
-      // 1. Gravar no localStorage imediatamente (fallback contra reload/race)
-      saveTimerLocal({ id: machineId, ...data });
-      // 2. Optimistic update no state local
       setMachines(prev => prev.map(m => m.id === machineId ? { ...m, ...data } : m));
-      // 3. Persistir na DB
       await FrotaACP.update(machineId, data);
-      // 4. DB confirmou — limpar localStorage (já não precisamos de fallback)
-      clearTimerLocal(machineId);
     } catch (e) {
       console.error("Erro ao iniciar timer:", e);
       await loadMachines();
@@ -738,10 +715,8 @@ export default function Dashboard() {
   const handleTimerPause = async (machineId, acumuladoMinutos) => {
     try {
       const data = { timer_ativo: true, timer_pausado: true, timer_acumulado: acumuladoMinutos };
-      saveTimerLocal({ id: machineId, ...data });
       setMachines(prev => prev.map(m => m.id === machineId ? { ...m, ...data } : m));
       await FrotaACP.update(machineId, data);
-      clearTimerLocal(machineId);
     } catch (e) { console.error("Erro ao pausar timer:", e); await loadMachines(); }
   };
 
@@ -750,21 +725,44 @@ export default function Dashboard() {
       const now = new Date().toISOString();
       const machine = machines.find(m => m.id === machineId);
       const data = { timer_pausado: false, timer_ativo: true, timer_inicio: now, timer_acumulado: machine?.timer_acumulado || 0 };
-      saveTimerLocal({ id: machineId, ...data });
       setMachines(prev => prev.map(m => m.id === machineId ? { ...m, ...data } : m));
       await FrotaACP.update(machineId, data);
-      clearTimerLocal(machineId);
     } catch (e) { console.error("Erro ao retomar timer:", e); await loadMachines(); }
   };
 
   const handleTimerStop = async (machineId, duracaoTotal) => {
     try {
+      const machine = machines.find(m => m.id === machineId);
       const fim = new Date().toISOString();
-      const data = { timer_ativo: false, timer_pausado: false, timer_fim: fim, timer_duracao_minutos: Math.round(duracaoTotal) };
-      clearTimerLocal(machineId); // timer concluído — limpar localStorage
+      const duracaoMinutos = Math.round(duracaoTotal);
+      const data = { 
+        timer_ativo: false, 
+        timer_pausado: false, 
+        timer_fim: fim, 
+        timer_duracao_minutos: duracaoMinutos 
+      };
+      
+      clearTimerLocal(machineId);
       setMachines(prev => prev.map(m => m.id === machineId ? { ...m, ...data } : m));
       await FrotaACP.update(machineId, data);
-      // Recarregar imediatamente para garantir que todos os utilizadores veem o timer finalizado
+
+      // Arquivar registro de tempo se houver série e técnico
+      if (machine?.serie && machine?.tecnico) {
+        try {
+          await base44.entities.TimeLog.create({
+            machineId: machine.id,
+            machineSerie: machine.serie,
+            technician: machine.tecnico,
+            startTime: machine.timer_inicio,
+            endTime: fim,
+            durationMinutes: duracaoMinutos,
+            type: 'frota_acp'
+          });
+        } catch (logErr) {
+          console.warn("Erro ao arquivar log de tempo:", logErr);
+        }
+      }
+
       setTimeout(() => loadMachines(), 500);
     } catch (e) { console.error("Erro ao parar timer:", e); await loadMachines(); }
   };
@@ -855,8 +853,8 @@ export default function Dashboard() {
   const allConcluidaMachines = useMemo(() => {
     const concluidas = machines.filter(m => !m.arquivada && m.estado?.includes('concluida'));
     return concluidas.sort((a, b) => {
-      const dateA = a.dataConclusao ? new Date(a.dataConclusao).getTime() : 0;
-      const dateB = b.dataConclusao ? new Date(b.dataConclusao).getTime() : 0;
+      const dateA = a.dataConclusao ? new Date(a.dataConclusao).getTime() : (a.updated_date ? new Date(a.updated_date).getTime() : 0);
+      const dateB = b.dataConclusao ? new Date(b.dataConclusao).getTime() : (b.updated_date ? new Date(b.updated_date).getTime() : 0);
       return dateB - dateA;
     });
   }, [machines]);
