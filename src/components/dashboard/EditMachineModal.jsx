@@ -19,10 +19,12 @@ const ESTADOS = [
   { value: 'em-preparacao-raphael', label: 'Em Preparação - Raphael' },
   { value: 'em-preparacao-nuno', label: 'Em Preparação - Nuno' },
   { value: 'em-preparacao-rogerio', label: 'Em Preparação - Rogério' },
+  { value: 'em-preparacao-yano', label: 'Em Preparação - Yano' },
   { value: 'em-preparacao-patrick', label: 'Em Preparação - Patrick' },
   { value: 'concluida-raphael', label: 'Concluída - Raphael' },
   { value: 'concluida-nuno', label: 'Concluída - Nuno' },
   { value: 'concluida-rogerio', label: 'Concluída - Rogério' },
+  { value: 'concluida-yano', label: 'Concluída - Yano' },
   { value: 'concluida-patrick', label: 'Concluída - Patrick' }
 ];
 

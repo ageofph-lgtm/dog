@@ -40,7 +40,21 @@ export default function MachineEditCard({ machine, onUpdate, onRemove, onViewDet
   }, [machine]);
 
   const handleUpdate = (field, value) => {
-    setLocalMachine({ ...localMachine, [field]: value });
+    let newMachine = { ...localMachine, [field]: value };
+    
+    // Se o estado mudar, atualizar também o técnico correspondente
+    if (field === 'estado') {
+      let tecnico = null;
+      if (value.includes('preparacao-') || value.includes('concluida-')) {
+        const parts = value.split('-');
+        tecnico = parts[parts.length - 1];
+      }
+      newMachine.tecnico = tecnico;
+      // Notificar o pai sobre a mudança do técnico também
+      onUpdate('tecnico', tecnico);
+    }
+
+    setLocalMachine(newMachine);
     onUpdate(field, value);
   };
 

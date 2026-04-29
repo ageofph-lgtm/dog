@@ -1339,8 +1339,21 @@ export default function Dashboard() {
                 {selectedMachines.map(machine => (
                   <MachineEditCard key={machine.id} machine={machine} isDark={isDarkMode}
                     onUpdate={async (field, value) => {
-                      try { await FrotaACP.update(machine.id, { [field]: value }); setSelectedMachines(prev => prev.map(m => m.id === machine.id ? { ...m, [field]: value } : m)); await loadMachines(); }
-                      catch (e) { console.error(e); }
+                      try {
+                        const updateData = { [field]: value };
+                        // Se o estado mudar, derivar o técnico para garantir consistência na DB
+                        if (field === 'estado') {
+                          let tecnico = null;
+                          if (value.includes('preparacao-') || value.includes('concluida-')) {
+                            const parts = value.split('-');
+                            tecnico = parts[parts.length - 1];
+                          }
+                          updateData.tecnico = tecnico;
+                        }
+                        await FrotaACP.update(machine.id, updateData);
+                        setSelectedMachines(prev => prev.map(m => m.id === machine.id ? { ...m, ...updateData } : m));
+                        await loadMachines();
+                      } catch (e) { console.error(e); }
                     }}
                     onRemove={() => handleSelectMachine(machine)}
                     onViewDetails={() => { setSelectedMachine(machine); setShowObsModal(true); }}
