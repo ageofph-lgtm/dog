@@ -42,9 +42,9 @@ const ORIGIN = {
 // ── Timer display inline ──────────────────────────────────────────────────────
 function InlineTimer({ os, isDark }) {
   const elapsed = useElapsedTimer(os);
-  const ativo   = os?.timer_ativo   === true;
-  const pausado = os?.timer_pausado === true;
-  const done    = !ativo && os?.timer_fim;
+  const ativo   = Boolean(os?.actualStartTime) || (os?.timer_ativo === true && os?.timer_pausado !== true);
+  const pausado = !ativo && (os?.status === 'Pausado' || os?.timer_pausado === true);
+  const done    = !ativo && (os?.status === 'Concluída' || os?.actualEndDate || os?.actualEndTime || os?.timer_fim);
 
   if (elapsed === null && !done) return null;
 

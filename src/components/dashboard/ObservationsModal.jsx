@@ -12,7 +12,7 @@ export default function ObservationsModal({
   isOpen, onClose, machine, onAddObservation, onToggleTask, onTogglePriority,
   onDelete, currentUser, userPermissions, onMarkComplete, onToggleAguardaPecas,
   allMachines, onOpenEdit, isDark,
-  onTimerStart, onTimerPause, onTimerResume, onTimerStop, onTimerReset
+  onTimerStart, onTimerPause, onTimerResume, onTimerStop, onTimerReset, onTimerPersist
 }) {
   const [newObs, setNewObs] = useState('');
   const [numeroPedido, setNumeroPedido] = useState('');
@@ -71,15 +71,36 @@ export default function ObservationsModal({
     },
   };
 
+  const timerSignature = (m) => JSON.stringify({
+    actualStartTime: m?.actualStartTime ?? null,
+    actualTimeSpent: m?.actualTimeSpent ?? null,
+    actualEndDate: m?.actualEndDate ?? null,
+    actualEndTime: m?.actualEndTime ?? null,
+    timer_ativo: m?.timer_ativo ?? null,
+    timer_pausado: m?.timer_pausado ?? null,
+    timer_inicio: m?.timer_inicio ?? null,
+    timer_fim: m?.timer_fim ?? null,
+    timer_acumulado: m?.timer_acumulado ?? null,
+    timer_duracao_minutos: m?.timer_duracao_minutos ?? null,
+  });
+
   // ── sync allMachines ───────────────────────────────────────────────────
-  // Sincroniza o estado local com a DB, mas apenas sobrescreve timer se a DB
-  // ainda não confirmou a mudança (race condition). Se a DB tem timer_fim
-  // definido, significa que o timer foi finalizado — aceitar a DB.
+  // A DB/listagem é a fonte de verdade. Porém, logo após uma ação do timer,
+  // pode chegar uma prop antiga antes da subscrição/polling refletir o update.
+  // Nesse intervalo curto, preservamos o registo que acabou de ser gravado.
   useEffect(() => {
-    if (machine && allMachines) {
-      const updated = allMachines.find(m => m.id === machine.id) || machine;
-      setLocalMachine(updated);
-    } else { setLocalMachine(machine); }
+    const updated = machine && allMachines ? (allMachines.find(m => m.id === machine.id) || machine) : machine;
+    setLocalMachine(prev => {
+      if (
+        prev?.id === updated?.id &&
+        prev?._timerPersistedAt &&
+        Date.now() - prev._timerPersistedAt < 5000 &&
+        timerSignature(prev) !== timerSignature(updated)
+      ) {
+        return prev;
+      }
+      return updated;
+    });
   }, [machine, allMachines]);
 
   useEffect(() => {
@@ -100,7 +121,9 @@ export default function ObservationsModal({
       try {
         const all = await base44.entities.Pedido.list();
         setMachinePedidos(all.filter(p => p.maquinaId === localMachine.id));
-      } catch(e) {}
+      } catch(e) {
+        console.warn("Erro ao carregar pedidos da máquina:", e);
+      }
     };
     if (isOpen) load();
   }, [localMachine?.id, isOpen]);
@@ -181,6 +204,13 @@ export default function ObservationsModal({
   const isMyMachine = currentUser?.nome_tecnico && localMachine.tecnico === currentUser.nome_tecnico;
   const canEditThisMachine = isAdmin || isMyMachine;
   const canEditTasks = localMachine.estado?.includes('em-preparacao') && canEditThisMachine;
+
+  const handleTimerPersistLocal = (updatedMachine) => {
+    setLocalMachine({ ...updatedMachine, _timerPersistedAt: Date.now() });
+    if (typeof onTimerPersist === 'function') {
+      onTimerPersist(updatedMachine);
+    }
+  };
 
   return (
     <>
@@ -274,6 +304,7 @@ export default function ObservationsModal({
                 onResume={onTimerResume}
                 onStop={onTimerStop}
                 onReset={onTimerReset}
+                onPersist={handleTimerPersistLocal}
                 isAdmin={userPermissions?.canMoveAnyMachine}
               />
             </div>

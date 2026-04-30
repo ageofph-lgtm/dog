@@ -470,7 +470,9 @@ export default function Dashboard() {
         const parsed = JSON.parse(saved);
         if (parsed?.perfil) return parsed;
       }
-    } catch {}
+    } catch (error) {
+      console.warn('Erro ao ler perfil local:', error);
+    }
     return null;
   });
 
@@ -782,6 +784,13 @@ export default function Dashboard() {
       }
     } catch (error) { console.error("Erro ao atualizar máquina:", error); await loadMachines(); }
   };
+
+  const handleTimerPersist = useCallback((updatedMachine) => {
+    if (!updatedMachine?.id) return;
+    setMachines(prev => prev.map(m => m.id === updatedMachine.id ? { ...m, ...updatedMachine } : m));
+    setSelectedMachine(prev => prev?.id === updatedMachine.id ? { ...prev, ...updatedMachine } : prev);
+    loadMachines();
+  }, [loadMachines]);
 
   const handleBulkCreate = async (machinesData) => {
     try {
@@ -1563,6 +1572,7 @@ export default function Dashboard() {
           onTimerResume={handleTimerResume}
           onTimerStop={handleTimerStop}
           onTimerReset={handleTimerReset}
+          onTimerPersist={handleTimerPersist}
           onAddObservation={handleAddObservation}
           onToggleTask={async (taskIdx) => {
             const updated = [...(selectedMachine.tarefas || [])];

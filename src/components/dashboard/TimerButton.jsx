@@ -181,7 +181,7 @@ export function useElapsedTimer(machine) {
 // ─── Componente principal ────────────────────────────────────────────────────
 
 export default function TimerButton({
-  machine, onStart, onPause, onResume, onStop, onReset, isAdmin
+  machine, currentUser, userPermissions, onStart, onPause, onResume, onStop, onReset, onPersist, isAdmin
 }) {
   const [loading,      setLoading]      = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
@@ -199,6 +199,11 @@ export default function TimerButton({
 
   const elapsed = useElapsedTimer(localMachine);
 
+  const isAdminUser = isAdmin || userPermissions?.canMoveAnyMachine === true;
+  const currentTechnician = currentUser?.nome_tecnico || userPermissions?.technicianName;
+  const ownsMachine = Boolean(currentTechnician && localMachine?.tecnico === currentTechnician);
+  const canControlTimer = isAdminUser || ownsMachine;
+
   const actualStart = getActualStartMs(localMachine);
   const accumulatedMs = getAccumulatedMs(localMachine);
   const status = localMachine?.status;
@@ -210,62 +215,112 @@ export default function TimerButton({
   const done = !ativo && (status === STATUS.DONE || getActualEndMs(localMachine) !== null || localMachine?.timer_fim);
   const idle = !ativo && !pausado && !done;
 
-  const persistTimerUpdate = async (payload) => {
+  const loadCanonicalRecord = async () => {
     if (!localMachine?.id) throw new Error("Registo sem id para persistir timer.");
     const entity = getEntityForRecord(localMachine);
-    await entity.update(localMachine.id, payload);
-    setLocalMachine(prev => ({ ...prev, ...payload }));
+
+    try {
+      const records = await entity.list('-updated_date');
+      const canonical = records?.find(record => record.id === localMachine.id);
+      if (canonical) return { entity, record: canonical };
+    } catch (err) {
+      console.warn("[TimerButton] Não foi possível reler o timer antes da ação; usando estado atual.", err);
+    }
+
+    return { entity, record: localMachine };
+  };
+
+  const publishPersistedRecord = (record) => {
+    setLocalMachine(record);
+    if (typeof onPersist === "function") {
+      onPersist(record);
+    }
+  };
+
+  const persistTimerUpdate = async (entity, baseRecord, payload) => {
+    if (!baseRecord?.id) throw new Error("Registo sem id para persistir timer.");
+    const optimisticRecord = { ...baseRecord, ...payload };
+
+    // A gravação no banco é a fonte de verdade. Só depois de persistir propagamos
+    // a máquina atualizada para o card, para a listagem e para os outros ambientes.
+    const updateResult = await entity.update(baseRecord.id, payload);
+    const persistedRecord = updateResult && typeof updateResult === "object"
+      ? { ...optimisticRecord, ...updateResult }
+      : optimisticRecord;
+
+    publishPersistedRecord(persistedRecord);
+  };
+
+  const ensureCanControlTimer = () => {
+    if (canControlTimer) return true;
+    alert("Sem permissão para controlar o timer desta máquina. Técnicos só podem iniciar/pausar/concluir as próprias máquinas.");
+    return false;
   };
 
   const handlePlay = async () => {
+    if (!ensureCanControlTimer()) return;
+
+    const { entity, record } = await loadCanonicalRecord();
+    if (isTimerRunning(record)) {
+      publishPersistedRecord(record);
+      return;
+    }
+
     const now = Date.now();
     const nowIso = new Date(now).toISOString();
+    const accumulated = getAccumulatedMs(record);
     const payload = {
       actualStartTime: nowIso,
-      actualTimeSpent: getAccumulatedMs(localMachine),
+      actualTimeSpent: accumulated,
       actualEndDate: null,
       actualEndTime: null,
-      ...buildStatusPayload(localMachine, STATUS.RUNNING),
+      ...buildStatusPayload(record, STATUS.RUNNING),
       // Campos legados mantidos apenas para compatibilidade visual existente.
       timer_inicio: nowIso,
       timer_ativo: true,
       timer_pausado: false,
       timer_fim: null,
       timer_duracao_minutos: null,
-      timer_acumulado: Math.round(getAccumulatedMs(localMachine) / 60000),
+      timer_acumulado: Math.round(accumulated / 60000),
     };
-    await persistTimerUpdate(payload);
+    await persistTimerUpdate(entity, record, payload);
   };
 
   const handlePause = async () => {
+    if (!ensureCanControlTimer()) return;
+
+    const { entity, record } = await loadCanonicalRecord();
     const now = Date.now();
-    const start = getActualStartMs(localMachine) ?? normalizeTimestampMs(localMachine?.timer_inicio);
+    const start = getActualStartMs(record) ?? normalizeTimestampMs(record?.timer_inicio);
     const sessionMs = start !== null ? Math.max(0, now - start) : 0;
-    const totalMs = getAccumulatedMs(localMachine) + sessionMs;
+    const totalMs = getAccumulatedMs(record) + sessionMs;
     const payload = {
       actualTimeSpent: totalMs,
       actualStartTime: null,
-      ...buildStatusPayload(localMachine, STATUS.PAUSED),
+      ...buildStatusPayload(record, STATUS.PAUSED),
       timer_ativo: false,
       timer_pausado: true,
       timer_acumulado: Math.round(totalMs / 60000),
     };
-    await persistTimerUpdate(payload);
+    await persistTimerUpdate(entity, record, payload);
   };
 
   const handleStop = async () => {
+    if (!ensureCanControlTimer()) return;
+
+    const { entity, record } = await loadCanonicalRecord();
     const now = Date.now();
     const nowIso = new Date(now).toISOString();
-    const start = getActualStartMs(localMachine) ?? normalizeTimestampMs(localMachine?.timer_inicio);
+    const start = getActualStartMs(record) ?? normalizeTimestampMs(record?.timer_inicio);
     const sessionMs = start !== null ? Math.max(0, now - start) : 0;
-    const totalMs = getAccumulatedMs(localMachine) + (getActualStartMs(localMachine) !== null || isLegacyActive ? sessionMs : 0);
+    const totalMs = getAccumulatedMs(record) + (isTimerRunning(record) ? sessionMs : 0);
     const totalMinutes = Math.round(totalMs / 60000);
     const payload = {
       actualTimeSpent: totalMs,
       actualStartTime: null,
       actualEndDate: nowIso,
       actualEndTime: nowIso,
-      ...buildStatusPayload(localMachine, STATUS.DONE),
+      ...buildStatusPayload(record, STATUS.DONE),
       timer_ativo: false,
       timer_pausado: false,
       timer_fim: nowIso,
@@ -273,16 +328,22 @@ export default function TimerButton({
       timer_acumulado: totalMinutes,
       dataConclusao: nowIso,
     };
-    await persistTimerUpdate(payload);
+    await persistTimerUpdate(entity, record, payload);
   };
 
   const handleReset = async () => {
+    if (!isAdminUser) {
+      alert("Apenas administradores podem resetar o timer.");
+      return;
+    }
+
+    const { entity, record } = await loadCanonicalRecord();
     const payload = {
       actualStartTime: null,
       actualTimeSpent: 0,
       actualEndDate: null,
       actualEndTime: null,
-      ...buildStatusPayload(localMachine, STATUS.TODO),
+      ...buildStatusPayload(record, STATUS.TODO),
       timer_ativo: false,
       timer_pausado: false,
       timer_inicio: null,
@@ -290,7 +351,7 @@ export default function TimerButton({
       timer_duracao_minutos: null,
       timer_acumulado: 0,
     };
-    await persistTimerUpdate(payload);
+    await persistTimerUpdate(entity, record, payload);
   };
 
   // Handler universal: usa onPointerDown para garantir que o evento é capturado
@@ -340,7 +401,7 @@ export default function TimerButton({
         {idle && (
           <TimerActionButton
             onAction={() => handleAction(handlePlay)}
-            disabled={loading}
+            disabled={loading || !canControlTimer}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold transition-all disabled:opacity-50 shadow cursor-pointer"
           >
             <Play className="w-3.5 h-3.5" />
@@ -353,7 +414,7 @@ export default function TimerButton({
           <>
             <TimerActionButton
               onAction={() => handleAction(handlePause)}
-              disabled={loading}
+              disabled={loading || !canControlTimer}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-yellow-500 hover:bg-yellow-400 active:scale-95 text-white text-xs font-bold transition-all disabled:opacity-50 shadow cursor-pointer"
             >
               <Pause className="w-3.5 h-3.5" />
@@ -369,7 +430,7 @@ export default function TimerButton({
                 setConfirmStop(false);
                 handleAction(handleStop);
               }}
-              disabled={loading}
+              disabled={loading || !canControlTimer}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-bold transition-all disabled:opacity-50 shadow cursor-pointer ${confirmStop ? "bg-red-700 animate-pulse" : "bg-red-600 hover:bg-red-500"}`}
             >
               <Square className="w-3.5 h-3.5 fill-current" />
@@ -383,7 +444,7 @@ export default function TimerButton({
           <>
             <TimerActionButton
               onAction={() => handleAction(handlePlay)}
-              disabled={loading}
+              disabled={loading || !canControlTimer}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold transition-all disabled:opacity-50 shadow cursor-pointer"
             >
               <Play className="w-3.5 h-3.5" />
@@ -399,7 +460,7 @@ export default function TimerButton({
                 setConfirmStop(false);
                 handleAction(handleStop);
               }}
-              disabled={loading}
+              disabled={loading || !canControlTimer}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-bold transition-all disabled:opacity-50 shadow cursor-pointer ${confirmStop ? "bg-red-700 animate-pulse" : "bg-red-600 hover:bg-red-500"}`}
             >
               <Square className="w-3.5 h-3.5 fill-current" />
@@ -417,7 +478,7 @@ export default function TimerButton({
         )}
 
         {/* RESET — só admin */}
-        {isAdmin && (localMachine?.actualStartTime || localMachine?.actualTimeSpent || localMachine?.timer_inicio) && (
+        {isAdminUser && (localMachine?.actualStartTime || localMachine?.actualTimeSpent || localMachine?.timer_inicio) && (
           <TimerActionButton
             onAction={() => {
               if (!confirmReset) {
