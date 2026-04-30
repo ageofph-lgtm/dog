@@ -6,7 +6,10 @@ import { base44 } from "@/api/base44Client";
 
 const TAREFAS_PREDEFINIDAS = ['Preparação geral', 'Revisão 3000h', 'VPS', 'EXPRESS'];
 const TIPO_ICONS = { nova: Sparkles, usada: Repeat, aluguer: Package };
-const TIMER_FIELDS = ['timer_ativo','timer_pausado','timer_inicio','timer_fim','timer_duracao_minutos','timer_acumulado'];
+const TIMER_FIELDS = [
+  'actualStartTime','actualTimeSpent','actualEndDate','actualEndTime','status',
+  'timer_ativo','timer_pausado','timer_inicio','timer_fim','timer_duracao_minutos','timer_acumulado'
+];
 
 export default function ObservationsModal({
   isOpen, onClose, machine, onAddObservation, onToggleTask, onTogglePriority,
@@ -291,7 +294,7 @@ export default function ObservationsModal({
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
 
           {/* TIMER — sempre visível se houver dados de timer ou se máquina está em preparação */}
-          {(localMachine.estado?.includes('em-preparacao') || localMachine.timer_inicio) && (
+          {(localMachine.estado?.includes('em-preparacao') || localMachine.actualStartTime || localMachine.actualTimeSpent || localMachine.timer_inicio || localMachine.timer_acumulado) && (
             <div style={{ ...s.section, marginBottom: '14px' }}>
               <span style={s.label}>⏱ Timer de Trabalho</span>
               <TimerButton

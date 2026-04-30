@@ -16,7 +16,7 @@ import OSNotificationsPanel from "../components/dashboard/OSNotificationsPanel";
 import ObservationsModal from "../components/dashboard/ObservationsModal";
 import CreateMachineModal from "../components/dashboard/CreateMachineModal";
 import MachineEditCard from "../components/dashboard/MachineEditCard";
-import TimerButton, { useElapsedTimer, formatDuration, saveTimerLocal, clearTimerLocal } from "../components/dashboard/TimerButton";
+import { useElapsedTimer, formatDuration, saveTimerLocal, clearTimerLocal } from "../components/dashboard/TimerButton";
 import { useTheme } from "../ThemeContext";
 import ProfileSelector from "../components/auth/ProfileSelector";
 import { LayoutUserContext } from "../Layout";
@@ -233,9 +233,9 @@ const MachineCardTechnician = ({ machine, onClick, techColor, isDark, isSelected
   const hasHistory   = machine.historicoCriacoes?.length > 0;
   const hasExpress   = machine.tarefas?.some(t => t.texto === 'EXPRESS');
   const otherTasks   = machine.tarefas?.filter(t => t.texto !== 'EXPRESS') || [];
-  const timerAtivo   = machine?.timer_ativo === true;
-  const timerPausado = machine?.timer_pausado === true;
-  const timerDone    = !timerAtivo && machine?.timer_fim;
+  const timerAtivo   = Boolean(machine?.actualStartTime) || (machine?.timer_ativo === true && machine?.timer_pausado !== true);
+  const timerPausado = !timerAtivo && (machine?.status === 'Pausado' || machine?.timer_pausado === true);
+  const timerDone    = !timerAtivo && (machine?.status === 'Concluída' || machine?.actualEndDate || machine?.actualEndTime || machine?.timer_fim);
   const timerElapsed = useElapsedTimer(machine);
   const isPrio       = !!machine.prioridade;
 
@@ -517,7 +517,10 @@ export default function Dashboard() {
 
 
 
-  const TIMER_FIELDS = ['timer_ativo','timer_pausado','timer_inicio','timer_fim','timer_duracao_minutos','timer_acumulado'];
+  const TIMER_FIELDS = [
+    'actualStartTime','actualTimeSpent','actualEndDate','actualEndTime','status',
+    'timer_ativo','timer_pausado','timer_inicio','timer_fim','timer_duracao_minutos','timer_acumulado'
+  ];
 
   const loadMachines = useCallback(async () => {
     try {
@@ -823,91 +826,197 @@ export default function Dashboard() {
 
 
   // ── TIMER HANDLERS ──
+  const normalizeTimerTimestampMs = (value) => {
+    if (value === null || value === undefined || value === '') return null;
+    if (value instanceof Date) return value.getTime();
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string') {
+      const numeric = Number(value);
+      if (Number.isFinite(numeric) && value.trim() !== '') return numeric;
+      const parsed = new Date(value).getTime();
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+  };
+
+  const getTimerAccumulatedMs = (machine) => {
+    if (!machine) return 0;
+
+    const actual = Number(machine.actualTimeSpent);
+    const legacyAccumulated = Number(machine.timer_acumulado);
+    const legacyDuration = Number(machine.timer_duracao_minutos);
+
+    const candidates = [];
+    if (Number.isFinite(actual) && actual >= 0) candidates.push(actual);
+    if (Number.isFinite(legacyAccumulated) && legacyAccumulated > 0) candidates.push(legacyAccumulated * 60 * 1000);
+    if (Number.isFinite(legacyDuration) && legacyDuration > 0) candidates.push(legacyDuration * 60 * 1000);
+
+    return candidates.length ? Math.max(...candidates) : 0;
+  };
+
+  const getTimerStartMs = (machine) => (
+    normalizeTimerTimestampMs(machine?.actualStartTime) ?? normalizeTimerTimestampMs(machine?.timer_inicio)
+  );
+
+  const getCanonicalMachine = async (machineId) => {
+    const data = await FrotaACP.list('-created_date');
+    const canonical = data.find(m => m.id === machineId);
+    if (canonical) return canonical;
+
+    return machines.find(m => m.id === machineId) || null;
+  };
+
+  const isTimerAdmin = Boolean(userPermissions?.canMoveAnyMachine || currentUser?.perfil === 'admin');
+
+  const canControlMachineTimer = (machine) => {
+    if (!machine) return false;
+    if (isTimerAdmin) return true;
+
+    const technicianName = userPermissions?.technicianName || currentUser?.nome_tecnico;
+    return Boolean(technicianName && machine?.tecnico === technicianName);
+  };
+
+  const ensureTimerPermission = (machine) => {
+    if (canControlMachineTimer(machine)) return true;
+    alert('Você só pode controlar o timer das suas próprias máquinas.');
+    return false;
+  };
+
+  const mergeTimerMachine = (machineId, updateData) => {
+    setMachines(prevMachines => prevMachines.map(m => (m.id === machineId ? { ...m, ...updateData } : m)));
+    setSelectedMachine(prev => (prev?.id === machineId ? { ...prev, ...updateData } : prev));
+  };
+
+  const persistTimerToDatabase = async (machineId, data) => {
+    mergeTimerMachine(machineId, data);
+    await FrotaACP.update(machineId, data);
+    await loadMachines();
+  };
+
   const handleTimerStart = async (machineId) => {
-    console.log("handleTimerStart disparado para:", machineId);
     try {
-      const machine = machines.find(m => m.id === machineId);
-      if (!machine) { console.warn("Máquina não encontrada no estado local:", machineId); return; }
-      
+      const machine = await getCanonicalMachine(machineId);
+      if (!machine) { console.warn('Máquina não encontrada:', machineId); return; }
+      if (!ensureTimerPermission(machine)) return;
+
       const now = new Date().toISOString();
-      const data = { 
-        timer_inicio: now, 
-        timer_ativo: true, 
-        timer_pausado: false, 
-        timer_fim: null, 
-        timer_duracao_minutos: null, 
-        timer_acumulado: 0,
-        actualStartTime: now, // Campo solicitado na missão
-        // Se a maquina esta em a-fazer, mover para em-preparacao com tecnico atual
+      const accumulatedMs = getTimerAccumulatedMs(machine);
+      const updateData = {
+        actualStartTime: now,
+        actualTimeSpent: accumulatedMs,
+        actualEndDate: null,
+        actualEndTime: null,
+        status: 'Em Progresso',
+        timer_inicio: now,
+        timer_ativo: true,
+        timer_pausado: false,
+        timer_fim: null,
+        timer_duracao_minutos: null,
+        timer_acumulado: Math.round(accumulatedMs / 60000),
         ...(machine.estado === 'a-fazer' && currentUser?.nome_tecnico ? {
           estado: `em-preparacao-${currentUser.nome_tecnico}`,
           tecnico: currentUser.nome_tecnico,
           dataAtribuicao: now
         } : {})
       };
-      await base44.entities.FrotaACP.update(machineId, data);
-      
-      // Sincronizar com Portal
-      if (data.estado) {
-        syncMachineToPortal(machine.serie, data.estado);
+
+      await persistTimerToDatabase(machineId, updateData);
+
+      if (updateData.estado) {
+        syncMachineToPortal(machine.serie, updateData.estado);
       }
-      
+    } catch (e) {
+      console.error('Erro ao iniciar timer:', e);
       await loadMachines();
-    } catch (e) { console.error("Erro ao iniciar timer:", e); await loadMachines(); }
+    }
   };
 
-  const handleTimerPause = async (machineId, acumuladoMinutos) => {
-    console.log("handleTimerPause disparado para:", machineId, "acumulado:", acumuladoMinutos);
+  const handleTimerPause = async (machineId) => {
     try {
-      const machine = machines.find(m => m.id === machineId);
-      if (!machine) { console.warn("Máquina não encontrada no estado local:", machineId); return; }
+      const machine = await getCanonicalMachine(machineId);
+      if (!machine) { console.warn('Máquina não encontrada:', machineId); return; }
+      if (!ensureTimerPermission(machine)) return;
 
-      // Garantir que o tempo acumulado é salvo corretamente em minutos
-      const data = { 
-        timer_ativo: false, 
-        timer_pausado: true, 
-        timer_acumulado: Math.round(acumuladoMinutos),
-        actualTimeSpent: Math.round(acumuladoMinutos) // Campo solicitado na missão
+      const now = Date.now();
+      const startMs = getTimerStartMs(machine);
+      const sessionMs = startMs !== null ? Math.max(0, now - startMs) : 0;
+      const totalMs = getTimerAccumulatedMs(machine) + sessionMs;
+      const updateData = {
+        actualStartTime: null,
+        actualTimeSpent: totalMs,
+        status: 'Pausado',
+        timer_inicio: null,
+        timer_ativo: false,
+        timer_pausado: true,
+        timer_acumulado: Math.round(totalMs / 60000)
       };
-      await base44.entities.FrotaACP.update(machineId, data);
+
+      await persistTimerToDatabase(machineId, updateData);
+    } catch (e) {
+      console.error('Erro ao pausar timer:', e);
       await loadMachines();
-    } catch (e) { console.error("Erro ao pausar timer:", e); await loadMachines(); }
+    }
   };
 
   const handleTimerResume = async (machineId) => {
     try {
+      const machine = await getCanonicalMachine(machineId);
+      if (!machine) { console.warn('Máquina não encontrada:', machineId); return; }
+      if (!ensureTimerPermission(machine)) return;
+
       const now = new Date().toISOString();
-      const machine = machines.find(m => m.id === machineId);
-      if (!machine) return;
-      const data = { timer_pausado: false, timer_ativo: true, timer_inicio: now, timer_acumulado: machine?.timer_acumulado || 0 };
-      await base44.entities.FrotaACP.update(machineId, data);
+      const accumulatedMs = getTimerAccumulatedMs(machine);
+      const updateData = {
+        actualStartTime: now,
+        actualTimeSpent: accumulatedMs,
+        actualEndDate: null,
+        actualEndTime: null,
+        status: 'Em Progresso',
+        timer_inicio: now,
+        timer_ativo: true,
+        timer_pausado: false,
+        timer_fim: null,
+        timer_duracao_minutos: null,
+        timer_acumulado: Math.round(accumulatedMs / 60000)
+      };
+
+      await persistTimerToDatabase(machineId, updateData);
+    } catch (e) {
+      console.error('Erro ao retomar timer:', e);
       await loadMachines();
-    } catch (e) { console.error("Erro ao retomar timer:", e); await loadMachines(); }
+    }
   };
 
-  const handleTimerStop = async (machineId, duracaoTotal) => {
-    console.log("handleTimerStop disparado para:", machineId, "duração:", duracaoTotal);
+  const handleTimerStop = async (machineId) => {
     try {
-      const machine = machines.find(m => m.id === machineId);
-      if (!machine) { console.warn("Máquina não encontrada no estado local:", machineId); return; }
+      const machine = await getCanonicalMachine(machineId);
+      if (!machine) { console.warn('Máquina não encontrada:', machineId); return; }
+      if (!ensureTimerPermission(machine)) return;
 
-      const fim = new Date().toISOString();
-      const duracaoMinutos = Math.round(duracaoTotal);
-      const data = { 
-        timer_ativo: false, 
-        timer_pausado: false, 
-        timer_fim: fim, 
+      const nowMs = Date.now();
+      const fim = new Date(nowMs).toISOString();
+      const startMs = getTimerStartMs(machine);
+      const sessionMs = startMs !== null ? Math.max(0, nowMs - startMs) : 0;
+      const totalMs = getTimerAccumulatedMs(machine) + sessionMs;
+      const duracaoMinutos = Math.round(totalMs / 60000);
+      const updateData = {
+        actualStartTime: null,
+        actualTimeSpent: totalMs,
+        actualEndDate: fim,
+        actualEndTime: fim,
+        status: 'Concluída',
+        timer_inicio: null,
+        timer_ativo: false,
+        timer_pausado: false,
+        timer_fim: fim,
         timer_duracao_minutos: duracaoMinutos,
-        actualTimeSpent: duracaoMinutos, // Campo solicitado na missão
-        actualEndTime: fim, // Campo solicitado na missão
-        estado: `concluida-${machine.tecnico || 'geral'}`,
+        timer_acumulado: duracaoMinutos,
+        estado: `concluida-${machine.tecnico || currentUser?.nome_tecnico || 'geral'}`,
         dataConclusao: fim
       };
-      
-      await base44.entities.FrotaACP.update(machineId, data);
 
-      // Sincronizar com Portal
-      syncMachineToPortal(machine.serie, data.estado);
+      await persistTimerToDatabase(machineId, updateData);
+      syncMachineToPortal(machine.serie, updateData.estado);
 
       if (machine?.serie && machine?.tecnico) {
         try {
@@ -915,25 +1024,48 @@ export default function Dashboard() {
             machineId: machine.id,
             machineSerie: machine.serie,
             technician: machine.tecnico,
-            startTime: machine.timer_inicio,
+            startTime: machine.actualStartTime || machine.timer_inicio,
             endTime: fim,
             durationMinutes: duracaoMinutos,
+            durationMs: totalMs,
             type: 'frota_acp'
           });
-        } catch (logErr) { console.warn("Erro ao arquivar log de tempo:", logErr); }
+        } catch (logErr) { console.warn('Erro ao arquivar log de tempo:', logErr); }
       }
-      
+    } catch (e) {
+      console.error('Erro ao parar timer:', e);
       await loadMachines();
-    } catch (e) { console.error("Erro ao parar timer:", e); await loadMachines(); }
+    }
   };
 
   const handleTimerReset = async (machineId) => {
     try {
-      const data = { timer_ativo: false, timer_pausado: false, timer_inicio: null, timer_fim: null, timer_duracao_minutos: null, timer_acumulado: 0 };
+      const machine = await getCanonicalMachine(machineId);
+      if (!machine) return;
+      if (!isTimerAdmin) {
+        alert('Apenas administradores podem resetar o timer.');
+        return;
+      }
+
+      const updateData = {
+        actualStartTime: null,
+        actualTimeSpent: 0,
+        actualEndDate: null,
+        actualEndTime: null,
+        status: 'A Fazer',
+        timer_ativo: false,
+        timer_pausado: false,
+        timer_inicio: null,
+        timer_fim: null,
+        timer_duracao_minutos: null,
+        timer_acumulado: 0
+      };
       clearTimerLocal(machineId);
-      setMachines(prev => prev.map(m => m.id === machineId ? { ...m, ...data } : m));
-      await FrotaACP.update(machineId, data);
-    } catch (e) { console.error("Erro ao resetar timer:", e); }
+      await persistTimerToDatabase(machineId, updateData);
+    } catch (e) {
+      console.error('Erro ao resetar timer:', e);
+      await loadMachines();
+    }
   };
 
   const handleDragEnd = async (result) => {

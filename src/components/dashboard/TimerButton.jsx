@@ -70,20 +70,22 @@ function getActualEndMs(record) {
 function getAccumulatedMs(record) {
   if (!record) return 0;
 
+  const candidates = [];
+
   const actual = Number(record.actualTimeSpent);
-  if (Number.isFinite(actual) && actual >= 0) return actual;
+  if (Number.isFinite(actual) && actual >= 0) candidates.push(actual);
 
   const legacyAccumulatedMinutes = Number(record.timer_acumulado);
   if (Number.isFinite(legacyAccumulatedMinutes) && legacyAccumulatedMinutes > 0) {
-    return legacyAccumulatedMinutes * 60 * 1000;
+    candidates.push(legacyAccumulatedMinutes * 60 * 1000);
   }
 
   const legacyDurationMinutes = Number(record.timer_duracao_minutos);
   if (Number.isFinite(legacyDurationMinutes) && legacyDurationMinutes > 0) {
-    return legacyDurationMinutes * 60 * 1000;
+    candidates.push(legacyDurationMinutes * 60 * 1000);
   }
 
-  return 0;
+  return candidates.length ? Math.max(...candidates) : 0;
 }
 
 function isTimerRunning(record) {
