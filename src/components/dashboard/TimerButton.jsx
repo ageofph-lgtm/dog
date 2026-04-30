@@ -27,22 +27,17 @@ export function formatDateTime(isoString) {
   });
 }
 
-// ─── Persistência local do timer ─────────────────────────────────────────────
-// (Removida para garantir que o estado da DB seja a única fonte de verdade)
+// ─── Persistência local (no-op, DB é a fonte de verdade) ────────────────────
 export function saveTimerLocal(machine) {}
 export function clearTimerLocal(machineId) {}
 export function resolveTimerFields(machine) { return machine; }
 
-// ─── Hook de elapsed ────────────────────────────────────────────────────────
-// Retorna segundos decorridos em tempo real.
-// Usa machineRef para evitar stale closures no setInterval.
-
+// ─── Hook de elapsed em tempo real ───────────────────────────────────────────
 export function useElapsedTimer(machine) {
   const timerRef   = useRef(null);
   const machineRef = useRef(machine);
   const [elapsed, setElapsed] = useState(() => computeElapsed(machine));
 
-  // Sincronizar o ref sempre que a prop muda (sem criar dependência no effect)
   useEffect(() => { machineRef.current = machine; });
 
   useEffect(() => {
@@ -70,15 +65,14 @@ export function useElapsedTimer(machine) {
     machine?.timer_duracao_minutos,
   ]);
 
-  return elapsed; // segundos
+  return elapsed;
 }
 
-// Calcula segundos decorridos a partir dos campos da máquina
 function computeElapsed(m) {
   if (!m) return null;
   const ativo   = m.timer_ativo   === true;
   const pausado = m.timer_pausado === true;
-  const acumSec = (m.timer_acumulado || 0) * 60; // acumulado está em minutos na DB
+  const acumSec = (m.timer_acumulado || 0) * 60;
 
   if (ativo && !pausado && m.timer_inicio) {
     const diff = (Date.now() - new Date(m.timer_inicio).getTime()) / 1000;
@@ -100,113 +94,134 @@ export default function TimerButton({
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmStop,  setConfirmStop]  = useState(false);
 
-  const elapsed = useElapsedTimer(machine); // segundos
+  const elapsed = useElapsedTimer(machine);
 
   const ativo   = machine?.timer_ativo   === true;
   const pausado = machine?.timer_pausado === true;
   const done    = !ativo && machine?.timer_fim;
   const idle    = !ativo && !machine?.timer_inicio;
 
-  // Persistência robusta: salvar tempo acumulado no unmount se estiver ativo
-  const elapsedRef = useRef(elapsed);
-  useEffect(() => {
-    elapsedRef.current = elapsed;
-  }, [elapsed]);
-
-  useEffect(() => {
-    return () => {
-      // Se o componente for desmontado e o timer estiver ativo, 
-      // poderíamos tentar salvar, mas como o Dashboard já lida com o estado global,
-      // e o timer_inicio + timer_acumulado na DB já permitem reconstruir o tempo,
-      // não precisamos de um save forçado aqui que poderia causar race conditions.
-    };
-  }, []);
-
-  const wrap = (fn) => async (e) => {
-    // e.stopPropagation(); // Removido para evitar que bloqueie o clique em alguns contextos de modal
-    if (loading) return;
-    setLoading(true);
-    try { await fn(); } finally { setLoading(false); }
-  };
-
-  // elapsed em minutos para passar aos handlers (DB guarda em minutos)
   const elapsedMin = elapsed !== null ? elapsed / 60 : 0;
 
-  return (
-    <div className="flex flex-col gap-1.5 w-full">
+  // Handler universal: usa onPointerDown para garantir que o evento é capturado
+  // antes de qualquer outro listener (especialmente em containers com onClick global).
+  const handleAction = async (action, ...args) => {
+    if (loading) return;
+    if (typeof action !== "function") {
+      console.error("[TimerButton] Handler não é uma função:", action);
+      return;
+    }
+    setLoading(true);
+    try {
+      console.log("[TimerButton] Disparando ação:", action.name || "anonymous", "args:", args);
+      await action(...args);
+    } catch (err) {
+      console.error("[TimerButton] Erro na ação:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      {/* ── Botões ── */}
+  // Stop click propagation in a container without blocking children
+  const stopAndPrevent = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+  };
+
+  // Wrapper para botão genérico
+  const TimerActionButton = ({ onAction, disabled, className, children }) => (
+    <button
+      type="button"
+      onPointerDown={(e) => { e.stopPropagation(); }}
+      onClick={(e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        onAction();
+      }}
+      disabled={disabled || loading}
+      className={className}
+    >
+      {children}
+    </button>
+  );
+
+  return (
+    <div
+      className="flex flex-col gap-1.5 w-full"
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+    >
       <div className="flex items-center gap-2 flex-wrap">
 
         {/* INICIAR */}
         {idle && (
-          <button
-            onClick={wrap(() => onStart(machine.id))}
+          <TimerActionButton
+            onAction={() => handleAction(onStart, machine.id)}
             disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold transition-all disabled:opacity-50 shadow"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold transition-all disabled:opacity-50 shadow cursor-pointer"
           >
             <Play className="w-3.5 h-3.5" />
             Iniciar
-          </button>
+          </TimerActionButton>
         )}
 
         {/* EM CURSO → PAUSAR + CONCLUIR */}
         {ativo && !pausado && (
           <>
-            <button
-              onClick={wrap(() => onPause(machine.id, elapsedMin))}
+            <TimerActionButton
+              onAction={() => handleAction(onPause, machine.id, elapsedMin)}
               disabled={loading}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-yellow-500 hover:bg-yellow-400 active:scale-95 text-white text-xs font-bold transition-all disabled:opacity-50 shadow"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-yellow-500 hover:bg-yellow-400 active:scale-95 text-white text-xs font-bold transition-all disabled:opacity-50 shadow cursor-pointer"
             >
               <Pause className="w-3.5 h-3.5" />
               Pausar
-            </button>
-            <button
-              onClick={wrap(async () => {
+            </TimerActionButton>
+            <TimerActionButton
+              onAction={() => {
                 if (!confirmStop) {
                   setConfirmStop(true);
                   setTimeout(() => setConfirmStop(false), 3000);
                   return;
                 }
                 setConfirmStop(false);
-                await onStop(machine.id, elapsedMin);
-              })}
+                handleAction(onStop, machine.id, elapsedMin);
+              }}
               disabled={loading}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-bold transition-all disabled:opacity-50 shadow ${confirmStop ? "bg-red-700 animate-pulse" : "bg-red-600 hover:bg-red-500"}`}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-bold transition-all disabled:opacity-50 shadow cursor-pointer ${confirmStop ? "bg-red-700 animate-pulse" : "bg-red-600 hover:bg-red-500"}`}
             >
               <Square className="w-3.5 h-3.5 fill-current" />
               {confirmStop ? "Confirmar?" : "Concluir"}
-            </button>
+            </TimerActionButton>
           </>
         )}
 
         {/* PAUSADO → RETOMAR + CONCLUIR */}
         {pausado && (
           <>
-            <button
-              onClick={wrap(() => onResume(machine.id))}
+            <TimerActionButton
+              onAction={() => handleAction(onResume, machine.id)}
               disabled={loading}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold transition-all disabled:opacity-50 shadow"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold transition-all disabled:opacity-50 shadow cursor-pointer"
             >
               <Play className="w-3.5 h-3.5" />
               Retomar
-            </button>
-            <button
-              onClick={wrap(async () => {
+            </TimerActionButton>
+            <TimerActionButton
+              onAction={() => {
                 if (!confirmStop) {
                   setConfirmStop(true);
                   setTimeout(() => setConfirmStop(false), 3000);
                   return;
                 }
                 setConfirmStop(false);
-                await onStop(machine.id, elapsedMin);
-              })}
+                handleAction(onStop, machine.id, elapsedMin);
+              }}
               disabled={loading}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-bold transition-all disabled:opacity-50 shadow ${confirmStop ? "bg-red-700 animate-pulse" : "bg-red-600 hover:bg-red-500"}`}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-bold transition-all disabled:opacity-50 shadow cursor-pointer ${confirmStop ? "bg-red-700 animate-pulse" : "bg-red-600 hover:bg-red-500"}`}
             >
               <Square className="w-3.5 h-3.5 fill-current" />
               {confirmStop ? "Confirmar?" : "Concluir"}
-            </button>
+            </TimerActionButton>
           </>
         )}
 
@@ -220,18 +235,18 @@ export default function TimerButton({
 
         {/* RESET — só admin */}
         {isAdmin && machine?.timer_inicio && (
-          <button
-            onClick={wrap(async () => {
+          <TimerActionButton
+            onAction={() => {
               if (!confirmReset) {
                 setConfirmReset(true);
                 setTimeout(() => setConfirmReset(false), 3000);
                 return;
               }
               setConfirmReset(false);
-              await onReset(machine.id);
-            })}
+              handleAction(onReset, machine.id);
+            }}
             disabled={loading}
-            className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-50 ml-auto ${
+            className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-50 ml-auto cursor-pointer ${
               confirmReset
                 ? "bg-orange-600 text-white animate-pulse"
                 : "bg-slate-200 hover:bg-slate-300 text-slate-600 dark:bg-slate-700 dark:text-slate-300"
@@ -239,11 +254,11 @@ export default function TimerButton({
           >
             <Trash2 className="w-3 h-3" />
             {confirmReset ? "Confirmar?" : "Reset"}
-          </button>
+          </TimerActionButton>
         )}
       </div>
 
-      {/* ── Cronómetro ao vivo ── */}
+      {/* Cronómetro ao vivo */}
       {ativo && !pausado && elapsed !== null && (
         <div className="flex items-center gap-2 font-mono">
           <span className="relative flex h-2 w-2">
@@ -257,7 +272,7 @@ export default function TimerButton({
         </div>
       )}
 
-      {/* ── Pausado ── */}
+      {/* Pausado */}
       {pausado && elapsed !== null && (
         <div className="flex items-center gap-2 font-mono">
           <Pause className="w-3 h-3 text-yellow-500" />
@@ -268,7 +283,7 @@ export default function TimerButton({
         </div>
       )}
 
-      {/* ── Metadados ── */}
+      {/* Metadados */}
       {machine?.timer_inicio && (
         <div className="text-[10px] text-slate-400 leading-tight space-y-0.5 mt-0.5">
           <p>▶ Início: {formatDateTime(machine.timer_inicio)}</p>

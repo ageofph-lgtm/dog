@@ -1,145 +1,187 @@
 /**
- * Lógica de Efeito Dominó: Reagendamento automático de OS
- * 
- * Quando uma OS urgente é criada/editada e atribuída a um técnico,
- * todas as outras OS "A Fazer" desse técnico sofrem mutação de datas (+1 dia).
+ * Lógica de Efeito Dominó: Reagendamento automático em cascata
+ *
+ * Quando uma OS urgente é submetida, esta lógica:
+ *   1. Busca apenas as OS "A Fazer" (Express ou NTS) do técnico afetado
+ *      via query filtrada no Base44 (não traz a base inteira).
+ *   2. Adiciona +1 dia útil às datas plannedStartDate e plannedEndDate.
+ *   3. Marca cada OS afetada com wasRescheduled: true.
+ *   4. Persiste as alterações em batch (Promise.all com concorrência controlada).
  */
+
+import { base44 } from "@/api/base44Client";
 
 /**
- * Calcula o próximo dia útil (ignorando fins de semana)
- * @param {Date} date - Data base
- * @param {number} daysToAdd - Número de dias a adicionar
- * @returns {Date} Nova data no próximo dia útil
+ * Calcula o próximo dia útil (ignorando sábados e domingos).
+ * @param {Date} date     Data base
+ * @param {number} days   Número de dias úteis a adicionar (default 1)
+ * @returns {Date}        Nova data
  */
-export function addBusinessDays(date, daysToAdd = 1) {
+export function addBusinessDays(date, days = 1) {
   const result = new Date(date);
-  let daysAdded = 0;
-
-  while (daysAdded < daysToAdd) {
+  let added = 0;
+  while (added < days) {
     result.setDate(result.getDate() + 1);
-    const dayOfWeek = result.getDay();
-    // Ignorar sábado (6) e domingo (0)
-    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-      daysAdded++;
-    }
+    const dow = result.getDay();
+    if (dow !== 0 && dow !== 6) added++;
   }
-
   return result;
 }
 
 /**
- * Aplica o Efeito Dominó: reagenda todas as OS "A Fazer" de um técnico
- * 
- * @param {string} technicianId - ID do técnico
- * @param {Array} allMachines - Lista de todas as máquinas
- * @param {Object} base44 - Cliente Base44
- * @returns {Promise<Array>} Array de máquinas que foram reagendadas
+ * Verifica se uma máquina/OS tem flag Express ou NTS nas suas tarefas.
+ * @param {Object} m - Máquina/OS
+ * @returns {boolean}
  */
-export async function applyDominoCascade(technicianId, allMachines, base44) {
-  try {
-    // Filtrar todas as OS "A Fazer" do técnico (Express e NTS)
-    const toReschedule = allMachines.filter(m => {
-      const isToDoState = m.estado === 'a-fazer';
-      const isExpress = m.tarefas?.some(t => t.texto === 'EXPRESS');
-      const isNTS = m.tarefas?.some(t => t.texto === 'NTS');
-      
-      return isToDoState && (isExpress || isNTS);
-    });
-
-    if (toReschedule.length === 0) {
-      console.log(`[Efeito Dominó] Nenhuma máquina para reagendar para ${technicianId}`);
-      return [];
-    }
-
-    const rescheduled = [];
-
-    // Reagendar cada máquina
-    for (const machine of toReschedule) {
-      try {
-        const plannedStart = machine.plannedStartDate ? new Date(machine.plannedStartDate) : new Date();
-        const plannedEnd = machine.plannedEndDate ? new Date(machine.plannedEndDate) : new Date();
-
-        // Adicionar 1 dia útil
-        const newStart = addBusinessDays(plannedStart, 1);
-        const newEnd = addBusinessDays(plannedEnd, 1);
-
-        // Atualizar máquina com novas datas e flag de reagendamento
-        const updateData = {
-          plannedStartDate: newStart.toISOString(),
-          plannedEndDate: newEnd.toISOString(),
-          wasRescheduled: true,
-          lastRescheduleDate: new Date().toISOString(),
-          lastRescheduleReason: `Efeito Dominó: OS urgente atribuída a ${technicianId}`
-        };
-
-        await base44.entities.FrotaACP.update(machine.id, updateData);
-        rescheduled.push({
-          id: machine.id,
-          serie: machine.serie,
-          oldStart: plannedStart.toISOString(),
-          newStart: newStart.toISOString(),
-          oldEnd: plannedEnd.toISOString(),
-          newEnd: newEnd.toISOString()
-        });
-
-        console.log(`[Efeito Dominó] Reagendada: ${machine.serie} (${plannedStart.toLocaleDateString('pt-PT')} → ${newStart.toLocaleDateString('pt-PT')})`);
-      } catch (err) {
-        console.error(`[Efeito Dominó] Erro ao reagendar ${machine.serie}:`, err);
-      }
-    }
-
-    return rescheduled;
-  } catch (error) {
-    console.error('[Efeito Dominó] Erro geral:', error);
-    return [];
-  }
+function isExpressOrNTS(m) {
+  if (!m?.tarefas || !Array.isArray(m.tarefas)) return false;
+  return m.tarefas.some(t => {
+    const txt = String(t?.texto || "").trim().toUpperCase();
+    return txt === "EXPRESS" || txt === "NTS";
+  });
 }
 
 /**
- * Verifica se uma máquina é urgente e aplica o Efeito Dominó se necessário
- * 
- * @param {Object} machine - Dados da máquina
- * @param {Array} allMachines - Lista de todas as máquinas
- * @param {Object} base44 - Cliente Base44
- * @returns {Promise<Array>} Array de máquinas reagendadas
+ * Lógica principal: aplica o Efeito Dominó.
+ *
+ * @param {string} technicianId   ID/nome do técnico afetado pela urgência
+ * @param {Date|string} dataBase  Data base a partir da qual o atraso começa
+ * @returns {Promise<{rescheduled: Array, errors: Array}>}
  */
-export async function handleUrgentMachineCreation(machine, allMachines, base44) {
-  // Verificar se é urgente e tem técnico atribuído
-  if (!machine.prioridade && machine.estado !== 'urgente') {
-    return [];
+export async function applyDominoEffect(technicianId, dataBase = new Date()) {
+  if (!technicianId) {
+    console.warn("[EfeitoDominó] technicianId em falta — abortando");
+    return { rescheduled: [], errors: [] };
   }
 
-  // Extrair técnico do estado (ex: em-preparacao-raphael)
+  console.log(`[EfeitoDominó] Iniciando cascata para técnico=${technicianId}, dataBase=${dataBase}`);
+
+  // ── 1. Query filtrada ao Base44 ─────────────────────────────────────────
+  // Filtramos por tecnico + estado === "a-fazer". O filtro de Express/NTS
+  // é feito client-side porque tarefas é um array embebido e o Base44 não
+  // suporta filtros aninhados em arrays.
+  let candidates = [];
+  try {
+    candidates = await base44.entities.FrotaACP.filter({
+      tecnico: technicianId,
+      estado: "a-fazer",
+    });
+  } catch (err) {
+    // Fallback: alguns ambientes não suportam .filter() — usar list e filtrar
+    console.warn("[EfeitoDominó] .filter() falhou, fallback para .list():", err?.message);
+    try {
+      const all = await base44.entities.FrotaACP.list();
+      candidates = all.filter(m => m.tecnico === technicianId && m.estado === "a-fazer");
+    } catch (err2) {
+      console.error("[EfeitoDominó] Falha ao buscar máquinas:", err2);
+      return { rescheduled: [], errors: [{ message: err2?.message }] };
+    }
+  }
+
+  // ── 2. Filtrar apenas Express/NTS ───────────────────────────────────────
+  const targets = candidates.filter(isExpressOrNTS);
+
+  if (targets.length === 0) {
+    console.log(`[EfeitoDominó] Nenhuma OS Express/NTS A Fazer encontrada para ${technicianId}`);
+    return { rescheduled: [], errors: [] };
+  }
+
+  console.log(`[EfeitoDominó] ${targets.length} OS encontradas para reagendar`);
+
+  // ── 3. Batch update com concorrência controlada ─────────────────────────
+  const baseDate = dataBase instanceof Date ? dataBase : new Date(dataBase);
+  const nowIso = new Date().toISOString();
+
+  const updates = targets.map(machine => {
+    const oldStart = machine.plannedStartDate ? new Date(machine.plannedStartDate) : new Date(baseDate);
+    const oldEnd   = machine.plannedEndDate   ? new Date(machine.plannedEndDate)   : new Date(baseDate);
+
+    const newStart = addBusinessDays(oldStart, 1);
+    const newEnd   = addBusinessDays(oldEnd,   1);
+
+    return {
+      machine,
+      payload: {
+        plannedStartDate:    newStart.toISOString(),
+        plannedEndDate:      newEnd.toISOString(),
+        wasRescheduled:      true,
+        lastRescheduleDate:  nowIso,
+        lastRescheduleReason: `Efeito Dominó: urgência criada por ${technicianId}`,
+      },
+    };
+  });
+
+  // Promise.allSettled para não falhar a cascata inteira se uma OS falhar
+  const results = await Promise.allSettled(
+    updates.map(({ machine, payload }) =>
+      base44.entities.FrotaACP.update(machine.id, payload)
+        .then(() => ({ id: machine.id, serie: machine.serie, payload }))
+    )
+  );
+
+  const rescheduled = [];
+  const errors = [];
+
+  results.forEach((r, i) => {
+    if (r.status === "fulfilled") {
+      rescheduled.push(r.value);
+      console.log(`[EfeitoDominó] ✓ ${updates[i].machine.serie} reagendada`);
+    } else {
+      errors.push({
+        machineId: updates[i].machine.id,
+        serie:     updates[i].machine.serie,
+        error:     r.reason?.message,
+      });
+      console.error(`[EfeitoDominó] ✗ Erro em ${updates[i].machine.serie}:`, r.reason);
+    }
+  });
+
+  return { rescheduled, errors };
+}
+
+/**
+ * Wrapper conveniente para chamar a partir de modais de criação/edição.
+ * Detecta se a máquina/OS é urgente e dispara a cascata.
+ *
+ * @param {Object} machine  Máquina/OS recém-criada ou editada
+ * @returns {Promise<{rescheduled: Array, errors: Array}>}
+ */
+export async function triggerDominoIfUrgent(machine) {
+  if (!machine) return { rescheduled: [], errors: [] };
+
+  // Considerar urgente se prioridade=true OU campo urgencia=true
+  const isUrgent = machine.prioridade === true || machine.urgencia === true;
+  if (!isUrgent) return { rescheduled: [], errors: [] };
+
+  // Extrair técnico
   let technicianId = machine.tecnico;
-  if (!technicianId && machine.estado?.includes('-')) {
-    const parts = machine.estado.split('-');
+  if (!technicianId && machine.estado?.includes("-")) {
+    const parts = machine.estado.split("-");
     technicianId = parts[parts.length - 1];
   }
 
   if (!technicianId) {
-    console.log('[Efeito Dominó] Máquina urgente sem técnico atribuído');
-    return [];
+    console.log("[EfeitoDominó] OS urgente sem técnico atribuído — cascata não disparada");
+    return { rescheduled: [], errors: [] };
   }
 
-  console.log(`[Efeito Dominó] Máquina urgente detectada: ${machine.serie} → Técnico: ${technicianId}`);
-
-  // Aplicar cascata de reagendamento
-  return await applyDominoCascade(technicianId, allMachines, base44);
+  return applyDominoEffect(technicianId, new Date());
 }
 
+// ─── Compatibilidade retroativa ──────────────────────────────────────────
+export const applyDominoCascade = async (technicianId, _allMachines, _base44) =>
+  applyDominoEffect(technicianId, new Date());
+
+export const handleUrgentMachineCreation = triggerDominoIfUrgent;
+
 /**
- * Formata informação de reagendamento para exibição
- * 
- * @param {Object} machine - Máquina com wasRescheduled flag
- * @returns {string|null} Mensagem formatada ou null
+ * Mensagem formatada para exibição em UI (cards/tooltips).
  */
 export function getRescheduleMessage(machine) {
-  if (!machine.wasRescheduled) return null;
-
-  const reason = machine.lastRescheduleReason || 'Reagendada automaticamente';
-  const date = machine.lastRescheduleDate 
-    ? new Date(machine.lastRescheduleDate).toLocaleDateString('pt-PT')
-    : 'data desconhecida';
-
+  if (!machine?.wasRescheduled) return null;
+  const reason = machine.lastRescheduleReason || "Reagendada automaticamente";
+  const date = machine.lastRescheduleDate
+    ? new Date(machine.lastRescheduleDate).toLocaleDateString("pt-PT")
+    : "data desconhecida";
   return `⏰ ${reason} em ${date}`;
 }

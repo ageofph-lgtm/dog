@@ -20,7 +20,7 @@ import TimerButton, { useElapsedTimer, formatDuration, saveTimerLocal, clearTime
 import { useTheme } from "../ThemeContext";
 import ProfileSelector from "../components/auth/ProfileSelector";
 import { LayoutUserContext } from "../Layout";
-import { handleUrgentMachineCreation } from "../utils/reschedulingLogic";
+import { triggerDominoIfUrgent } from "../utils/reschedulingLogic";
 
 const TECHNICIANS = [
   { id: 'raphael', name: 'RAPHAEL', color: 'bg-red-500', borderColor: '#ef4444', lightBg: '#fee2e2' },
@@ -599,8 +599,11 @@ export default function Dashboard() {
       // ── Aplicar Efeito Dominó se máquina é prioritária ──────────────────
       if (newMachine.prioridade) {
         try {
-          const allMachines = await FrotaACP.list();
-          await handleUrgentMachineCreation(newMachine, allMachines, base44);
+          const result = await triggerDominoIfUrgent(newMachine);
+          if (result.rescheduled.length > 0) {
+            console.log(`[Efeito Dominó] ${result.rescheduled.length} OS reagendadas com sucesso`);
+            await loadMachines();
+          }
         } catch (e) { console.warn("[Efeito Dominó] Erro ao aplicar cascata:", e.message); }
       }
       // ─────────────────────────────────────────────────────────────────────
@@ -641,6 +644,20 @@ export default function Dashboard() {
     try {
       setMachines(prevMachines => prevMachines.map(m => m.id === machineId ? { ...m, prioridade: newPriorityValue } : m));
       await FrotaACP.update(machineId, { prioridade: newPriorityValue });
+
+      // Disparar Efeito Dominó se a máquina foi marcada como urgente
+      if (newPriorityValue === true) {
+        const machine = machines.find(m => m.id === machineId);
+        if (machine) {
+          try {
+            const result = await triggerDominoIfUrgent({ ...machine, prioridade: true });
+            if (result.rescheduled.length > 0) {
+              console.log(`[Efeito Dominó] ${result.rescheduled.length} OS reagendadas via toggle`);
+              await loadMachines();
+            }
+          } catch (e) { console.warn("[Efeito Dominó] Erro:", e.message); }
+        }
+      }
     } catch (error) { console.error("Erro ao atualizar prioridade:", error); await loadMachines(); }
   };
 
@@ -777,6 +794,18 @@ export default function Dashboard() {
   const handleEditSave = async (machineId, updateData) => {
     try {
       await FrotaACP.update(machineId, updateData);
+
+      // Disparar Efeito Dominó se a edição marcou como urgente
+      if (updateData.prioridade === true) {
+        try {
+          const merged = { ...machineToEdit, ...updateData };
+          const result = await triggerDominoIfUrgent(merged);
+          if (result.rescheduled.length > 0) {
+            console.log(`[Efeito Dominó] ${result.rescheduled.length} OS reagendadas via edição`);
+          }
+        } catch (e) { console.warn("[Efeito Dominó] Erro:", e.message); }
+      }
+
       await loadMachines();
       setShowEditModal(false);
       setMachineToEdit(null);
@@ -1542,7 +1571,17 @@ export default function Dashboard() {
             await loadMachines();
           }}
           onTogglePriority={async () => {
-            await FrotaACP.update(selectedMachine.id, { prioridade: !selectedMachine.prioridade });
+            const newValue = !selectedMachine.prioridade;
+            await FrotaACP.update(selectedMachine.id, { prioridade: newValue });
+            // Disparar cascata se passou a urgente
+            if (newValue === true) {
+              try {
+                const result = await triggerDominoIfUrgent({ ...selectedMachine, prioridade: true });
+                if (result.rescheduled.length > 0) {
+                  console.log(`[Efeito Dominó] ${result.rescheduled.length} OS reagendadas via modal`);
+                }
+              } catch (e) { console.warn("[Efeito Dominó] Erro:", e.message); }
+            }
             await loadMachines();
           }}
           onToggleAguardaPecas={async () => {
