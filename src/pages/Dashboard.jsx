@@ -904,9 +904,16 @@ export default function Dashboard() {
   const otherTechs = TECHNICIANS.filter(t => t.id !== myTechId);
   const isAdmin    = currentUser?.perfil === 'admin';
 
-  // Máquinas por técnico
-  const myMachines = useMemo(() => machines.filter(m => !m.arquivada && m.estado === `em-preparacao-${myTechId}`), [machines, myTechId]);
-  const myConc     = useMemo(() => machines.filter(m => !m.arquivada && m.estado === `concluida-${myTechId}`), [machines, myTechId]);
+  // Máquinas por técnico - Filtragem resiliente (usa estado OU campo técnico)
+  const myMachines = useMemo(() => machines.filter(m => 
+    !m.arquivada && 
+    (m.estado === `em-preparacao-${myTechId}` || (m.estado?.startsWith('em-preparacao') && m.tecnico === myTechId))
+  ), [machines, myTechId]);
+
+  const myConc = useMemo(() => machines.filter(m => 
+    !m.arquivada && 
+    (m.estado === `concluida-${myTechId}` || (m.estado === 'concluida' && m.tecnico === myTechId))
+  ), [machines, myTechId]);
 
   // ── Helpers de UI ─────────────────────────────────────────────────────────
   const D = {
@@ -1236,8 +1243,8 @@ export default function Dashboard() {
             {/* ROW 3 — OUTROS TÉCNICOS (fill restante da largura) */}
             <div className="kanban-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '10px', padding: '0 16px' }}>
               {otherTechs.map(tech => {
-                const emPrep = machines.filter(m => !m.arquivada && m.estado === `em-preparacao-${tech.id}`);
-                const concl  = machines.filter(m => !m.arquivada && m.estado === `concluida-${tech.id}`);
+                const emPrep = machines.filter(m => !m.arquivada && (m.estado === `em-preparacao-${tech.id}` || (m.estado?.startsWith('em-preparacao') && m.tecnico === tech.id)));
+                const concl  = machines.filter(m => !m.arquivada && (m.estado === `concluida-${tech.id}` || (m.estado === 'concluida' && m.tecnico === tech.id)));
                 return (
                   <div key={tech.id} style={{ background: isDarkMode ? '#0C0C18' : '#FAFAFA', border: `1px solid ${D.border}`, borderTop: `2px solid ${tech.borderColor}`, borderRadius: '8px', overflow: 'hidden' }}>
                     <div style={{ padding: '7px 10px', display: 'flex', alignItems: 'center', gap: '7px', borderBottom: `1px solid ${D.border}`, background: isDarkMode ? `${tech.borderColor}06` : `${tech.borderColor}03` }}>
