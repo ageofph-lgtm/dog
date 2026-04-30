@@ -770,16 +770,40 @@ export default function Dashboard() {
   // ── TIMER HANDLERS ──
   const handleTimerStart = async (machineId) => {
     try {
+      const machine = machines.find(m => m.id === machineId);
+      if (!machine) return;
+      
       const now = new Date().toISOString();
-      const data = { timer_inicio: now, timer_ativo: true, timer_pausado: false, timer_fim: null, timer_duracao_minutos: null, timer_acumulado: 0 };
+      const data = { 
+        timer_inicio: now, 
+        timer_ativo: true, 
+        timer_pausado: false, 
+        timer_fim: null, 
+        timer_duracao_minutos: null, 
+        timer_acumulado: 0,
+        // Se a maquina esta em a-fazer, mover para em-preparacao com tecnico atual
+        ...(machine.estado === 'a-fazer' && currentUser?.nome_tecnico ? {
+          estado: `em-preparacao-${currentUser.nome_tecnico}`,
+          tecnico: currentUser.nome_tecnico,
+          dataAtribuicao: now
+        } : {})
+      };
       await base44.entities.FrotaACP.update(machineId, data);
+      await loadMachines();
     } catch (e) { console.error("Erro ao iniciar timer:", e); await loadMachines(); }
   };
 
   const handleTimerPause = async (machineId, acumuladoMinutos) => {
     try {
-      const data = { timer_ativo: true, timer_pausado: true, timer_acumulado: acumuladoMinutos };
+      // Garantir que o tempo acumulado é salvo corretamente em minutos
+      const data = { 
+        timer_ativo: false, 
+        timer_pausado: true, 
+        timer_acumulado: Math.round(acumuladoMinutos) 
+      };
       await base44.entities.FrotaACP.update(machineId, data);
+      // Recarregar para confirmar persistência
+      await loadMachines();
     } catch (e) { console.error("Erro ao pausar timer:", e); await loadMachines(); }
   };
 
@@ -787,8 +811,10 @@ export default function Dashboard() {
     try {
       const now = new Date().toISOString();
       const machine = machines.find(m => m.id === machineId);
+      if (!machine) return;
       const data = { timer_pausado: false, timer_ativo: true, timer_inicio: now, timer_acumulado: machine?.timer_acumulado || 0 };
       await base44.entities.FrotaACP.update(machineId, data);
+      await loadMachines();
     } catch (e) { console.error("Erro ao retomar timer:", e); await loadMachines(); }
   };
 
@@ -801,7 +827,8 @@ export default function Dashboard() {
         timer_ativo: false, 
         timer_pausado: false, 
         timer_fim: fim, 
-        timer_duracao_minutos: duracaoMinutos 
+        timer_duracao_minutos: duracaoMinutos,
+        actualTimeSpent: duracaoMinutos
       };
       
       await base44.entities.FrotaACP.update(machineId, data);
@@ -819,6 +846,8 @@ export default function Dashboard() {
           });
         } catch (logErr) { console.warn("Erro ao arquivar log de tempo:", logErr); }
       }
+      
+      await loadMachines();
     } catch (e) { console.error("Erro ao parar timer:", e); await loadMachines(); }
   };
 
