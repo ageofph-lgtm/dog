@@ -20,6 +20,7 @@ import TimerButton, { useElapsedTimer, formatDuration, saveTimerLocal, clearTime
 import { useTheme } from "../ThemeContext";
 import ProfileSelector from "../components/auth/ProfileSelector";
 import { LayoutUserContext } from "../Layout";
+import { handleUrgentMachineCreation } from "../utils/reschedulingLogic";
 
 const TECHNICIANS = [
   { id: 'raphael', name: 'RAPHAEL', color: 'bg-red-500', borderColor: '#ef4444', lightBg: '#fee2e2' },
@@ -140,6 +141,13 @@ const MachineCardCompact = ({ machine, onClick, isDark, onAssign, showAssignButt
           )}
           {hasHistory && <Repeat style={{ width: '10px', height: '10px', color: '#4D9FFF' }} />}
           {machine.aguardaPecas && <Package style={{ width: '10px', height: '10px', color: '#F59E0B' }} />}
+          {machine.wasRescheduled && (
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#EC4899" strokeWidth="2" style={{ filter: 'drop-shadow(0 0 3px #EC4899)' }}>
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+              <path d="M8 8 Q 6 6 4 8" />
+            </svg>
+          )}
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -586,6 +594,15 @@ export default function Dashboard() {
           console.log(`[Portal sync] Criada no ACP2: ${newMachine.serie}`);
         }
       } catch(e) { console.warn("[Portal sync create]", e.message); }
+      // ─────────────────────────────────────────────────────────────────────
+
+      // ── Aplicar Efeito Dominó se máquina é prioritária ──────────────────
+      if (newMachine.prioridade) {
+        try {
+          const allMachines = await FrotaACP.list();
+          await handleUrgentMachineCreation(newMachine, allMachines, base44);
+        } catch (e) { console.warn("[Efeito Dominó] Erro ao aplicar cascata:", e.message); }
+      }
       // ─────────────────────────────────────────────────────────────────────
 
       await loadMachines();
