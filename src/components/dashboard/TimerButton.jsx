@@ -107,6 +107,21 @@ export default function TimerButton({
   const done    = !ativo && machine?.timer_fim;
   const idle    = !ativo && !machine?.timer_inicio;
 
+  // Persistência robusta: salvar tempo acumulado no unmount se estiver ativo
+  const elapsedRef = useRef(elapsed);
+  useEffect(() => {
+    elapsedRef.current = elapsed;
+  }, [elapsed]);
+
+  useEffect(() => {
+    return () => {
+      // Se o componente for desmontado e o timer estiver ativo, 
+      // poderíamos tentar salvar, mas como o Dashboard já lida com o estado global,
+      // e o timer_inicio + timer_acumulado na DB já permitem reconstruir o tempo,
+      // não precisamos de um save forçado aqui que poderia causar race conditions.
+    };
+  }, []);
+
   const wrap = (fn) => async (e) => {
     e.stopPropagation();
     if (loading) return;

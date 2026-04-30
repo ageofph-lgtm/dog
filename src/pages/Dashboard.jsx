@@ -798,6 +798,7 @@ export default function Dashboard() {
         timer_fim: null, 
         timer_duracao_minutos: null, 
         timer_acumulado: 0,
+        actualStartTime: now, // Campo solicitado na missão
         // Se a maquina esta em a-fazer, mover para em-preparacao com tecnico atual
         ...(machine.estado === 'a-fazer' && currentUser?.nome_tecnico ? {
           estado: `em-preparacao-${currentUser.nome_tecnico}`,
@@ -806,20 +807,29 @@ export default function Dashboard() {
         } : {})
       };
       await base44.entities.FrotaACP.update(machineId, data);
+      
+      // Sincronizar com Portal
+      if (data.estado) {
+        syncMachineToPortal(machine.serie, data.estado);
+      }
+      
       await loadMachines();
     } catch (e) { console.error("Erro ao iniciar timer:", e); await loadMachines(); }
   };
 
   const handleTimerPause = async (machineId, acumuladoMinutos) => {
     try {
+      const machine = machines.find(m => m.id === machineId);
+      if (!machine) return;
+
       // Garantir que o tempo acumulado é salvo corretamente em minutos
       const data = { 
         timer_ativo: false, 
         timer_pausado: true, 
-        timer_acumulado: Math.round(acumuladoMinutos) 
+        timer_acumulado: Math.round(acumuladoMinutos),
+        actualTimeSpent: Math.round(acumuladoMinutos) // Campo solicitado na missão
       };
       await base44.entities.FrotaACP.update(machineId, data);
-      // Recarregar para confirmar persistência
       await loadMachines();
     } catch (e) { console.error("Erro ao pausar timer:", e); await loadMachines(); }
   };
@@ -838,6 +848,8 @@ export default function Dashboard() {
   const handleTimerStop = async (machineId, duracaoTotal) => {
     try {
       const machine = machines.find(m => m.id === machineId);
+      if (!machine) return;
+
       const fim = new Date().toISOString();
       const duracaoMinutos = Math.round(duracaoTotal);
       const data = { 
@@ -845,10 +857,16 @@ export default function Dashboard() {
         timer_pausado: false, 
         timer_fim: fim, 
         timer_duracao_minutos: duracaoMinutos,
-        actualTimeSpent: duracaoMinutos
+        actualTimeSpent: duracaoMinutos, // Campo solicitado na missão
+        actualEndTime: fim, // Campo solicitado na missão
+        estado: `concluida-${machine.tecnico || 'geral'}`,
+        dataConclusao: fim
       };
       
       await base44.entities.FrotaACP.update(machineId, data);
+
+      // Sincronizar com Portal
+      syncMachineToPortal(machine.serie, data.estado);
 
       if (machine?.serie && machine?.tecnico) {
         try {
