@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Play, Pause, Square, Clock, Trash2 } from "lucide-react";
+import { base44 } from "@/api/base44Client";
 
 // ─── Formatadores ────────────────────────────────────────────────────────────
 
@@ -19,9 +20,9 @@ export function formatDurationMin(minutes) {
   return formatDuration(Math.round(minutes) * 60);
 }
 
-export function formatDateTime(isoString) {
-  if (!isoString) return null;
-  return new Date(isoString).toLocaleString("pt-PT", {
+export function formatDateTime(value) {
+  if (!value) return null;
+  return new Date(normalizeTimestampMs(value) ?? value).toLocaleString("pt-PT", {
     day: "2-digit", month: "2-digit", year: "2-digit",
     hour: "2-digit", minute: "2-digit"
   });
@@ -32,44 +33,93 @@ export function saveTimerLocal(machine) {}
 export function clearTimerLocal(machineId) {}
 export function resolveTimerFields(machine) { return machine; }
 
-// ─── Hook de elapsed em tempo real ───────────────────────────────────────────
-export function useElapsedTimer(machine) {
-  const timerRef   = useRef(null);
-  const machineRef = useRef(machine);
-  const [elapsed, setElapsed] = useState(() => computeElapsed(machine));
+// ─── Helpers de persistência real ────────────────────────────────────────────
 
-  useEffect(() => { machineRef.current = machine; });
+const STATUS = {
+  TODO: "A Fazer",
+  RUNNING: "Em Progresso",
+  PAUSED: "Pausado",
+  DONE: "Concluída",
+};
 
-  useEffect(() => {
-    clearInterval(timerRef.current);
-    timerRef.current = null;
+function hasOwn(obj, key) {
+  return Object.prototype.hasOwnProperty.call(obj || {}, key);
+}
 
-    const ativo   = machine?.timer_ativo   === true;
-    const pausado = machine?.timer_pausado === true;
+function normalizeTimestampMs(value) {
+  if (value === null || value === undefined || value === "") return null;
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric) && value.trim() !== "") return numeric;
+    const parsed = new Date(value).getTime();
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
 
-    if (ativo && !pausado) {
-      const tick = () => setElapsed(computeElapsed(machineRef.current));
-      tick();
-      timerRef.current = setInterval(tick, 1000);
-    } else {
-      setElapsed(computeElapsed(machine));
-    }
+function getActualStartMs(record) {
+  return normalizeTimestampMs(record?.actualStartTime);
+}
 
-    return () => { clearInterval(timerRef.current); timerRef.current = null; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    machine?.timer_ativo,
-    machine?.timer_pausado,
-    machine?.timer_inicio,
-    machine?.timer_acumulado,
-    machine?.timer_duracao_minutos,
-  ]);
+function getActualEndMs(record) {
+  return normalizeTimestampMs(record?.actualEndDate ?? record?.actualEndTime ?? record?.timer_fim);
+}
 
-  return elapsed;
+function getAccumulatedMs(record) {
+  if (!record) return 0;
+
+  const actual = Number(record.actualTimeSpent);
+  if (Number.isFinite(actual) && actual >= 0) return actual;
+
+  const legacyAccumulatedMinutes = Number(record.timer_acumulado);
+  if (Number.isFinite(legacyAccumulatedMinutes) && legacyAccumulatedMinutes > 0) {
+    return legacyAccumulatedMinutes * 60 * 1000;
+  }
+
+  const legacyDurationMinutes = Number(record.timer_duracao_minutos);
+  if (Number.isFinite(legacyDurationMinutes) && legacyDurationMinutes > 0) {
+    return legacyDurationMinutes * 60 * 1000;
+  }
+
+  return 0;
+}
+
+function getEntityForRecord(record) {
+  const explicitEntity = record?.entityName || record?._entityName;
+  if (explicitEntity && base44.entities?.[explicitEntity]) return base44.entities[explicitEntity];
+
+  if (hasOwn(record, "status") && base44.entities?.OrdemServico) return base44.entities.OrdemServico;
+  if (base44.entities?.FrotaACP) return base44.entities.FrotaACP;
+  if (base44.entities?.OrdemServico) return base44.entities.OrdemServico;
+
+  throw new Error("Não foi possível determinar a entidade para persistir o timer.");
+}
+
+function shouldWriteStatus(record) {
+  return hasOwn(record, "status") || !hasOwn(record, "estado");
+}
+
+function buildStatusPayload(record, status) {
+  return shouldWriteStatus(record) ? { status } : {};
 }
 
 function computeElapsed(m) {
   if (!m) return null;
+
+  const actualStart = getActualStartMs(m);
+  const accumulatedMs = getAccumulatedMs(m);
+
+  // Fonte de verdade nova: ao montar/renderizar, se actualStartTime existir, o
+  // cronómetro retoma em (Date.now() - actualStartTime) + actualTimeSpent.
+  if (actualStart !== null) {
+    return (accumulatedMs + Math.max(0, Date.now() - actualStart)) / 1000;
+  }
+
+  if (accumulatedMs > 0) return accumulatedMs / 1000;
+
+  // Compatibilidade com dados legados ainda existentes no backend.
   const ativo   = m.timer_ativo   === true;
   const pausado = m.timer_pausado === true;
   const acumSec = (m.timer_acumulado || 0) * 60;
@@ -85,6 +135,46 @@ function computeElapsed(m) {
   return null;
 }
 
+// ─── Hook de elapsed em tempo real ───────────────────────────────────────────
+export function useElapsedTimer(machine) {
+  const timerRef   = useRef(null);
+  const machineRef = useRef(machine);
+  const [elapsed, setElapsed] = useState(() => computeElapsed(machine));
+
+  useEffect(() => { machineRef.current = machine; });
+
+  useEffect(() => {
+    clearInterval(timerRef.current);
+    timerRef.current = null;
+
+    const actualStart = getActualStartMs(machine);
+    const ativo       = actualStart !== null || (machine?.timer_ativo === true && machine?.timer_pausado !== true);
+
+    if (ativo) {
+      const tick = () => setElapsed(computeElapsed(machineRef.current));
+      tick();
+      timerRef.current = setInterval(tick, 1000);
+    } else {
+      setElapsed(computeElapsed(machine));
+    }
+
+    return () => { clearInterval(timerRef.current); timerRef.current = null; };
+  }, [
+    machine?.actualStartTime,
+    machine?.actualTimeSpent,
+    machine?.actualEndDate,
+    machine?.actualEndTime,
+    machine?.status,
+    machine?.timer_ativo,
+    machine?.timer_pausado,
+    machine?.timer_inicio,
+    machine?.timer_acumulado,
+    machine?.timer_duracao_minutos,
+  ]);
+
+  return elapsed;
+}
+
 // ─── Componente principal ────────────────────────────────────────────────────
 
 export default function TimerButton({
@@ -93,19 +183,111 @@ export default function TimerButton({
   const [loading,      setLoading]      = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmStop,  setConfirmStop]  = useState(false);
+  const [localMachine, setLocalMachine] = useState(machine);
 
-  const elapsed = useElapsedTimer(machine);
+  useEffect(() => {
+    setLocalMachine(machine);
+  }, [machine]);
 
-  const ativo   = machine?.timer_ativo   === true;
-  const pausado = machine?.timer_pausado === true;
-  const done    = !ativo && machine?.timer_fim;
-  const idle    = !ativo && !machine?.timer_inicio;
+  const elapsed = useElapsedTimer(localMachine);
 
-  const elapsedMin = elapsed !== null ? elapsed / 60 : 0;
+  const actualStart = getActualStartMs(localMachine);
+  const accumulatedMs = getAccumulatedMs(localMachine);
+  const status = localMachine?.status;
+  const isLegacyActive = localMachine?.timer_ativo === true && localMachine?.timer_pausado !== true;
+  const isLegacyPaused = localMachine?.timer_pausado === true;
+
+  const ativo = actualStart !== null || isLegacyActive;
+  const pausado = !ativo && (status === STATUS.PAUSED || isLegacyPaused);
+  const done = !ativo && (status === STATUS.DONE || getActualEndMs(localMachine) !== null || localMachine?.timer_fim);
+  const idle = !ativo && !pausado && !done;
+
+  const persistTimerUpdate = async (payload) => {
+    if (!localMachine?.id) throw new Error("Registo sem id para persistir timer.");
+    const entity = getEntityForRecord(localMachine);
+    await entity.update(localMachine.id, payload);
+    setLocalMachine(prev => ({ ...prev, ...payload }));
+  };
+
+  const handlePlay = async () => {
+    const now = Date.now();
+    const nowIso = new Date(now).toISOString();
+    const payload = {
+      actualStartTime: now,
+      actualTimeSpent: getAccumulatedMs(localMachine),
+      actualEndDate: null,
+      actualEndTime: null,
+      ...buildStatusPayload(localMachine, STATUS.RUNNING),
+      // Campos legados mantidos apenas para compatibilidade visual existente.
+      timer_inicio: localMachine?.timer_inicio || nowIso,
+      timer_ativo: true,
+      timer_pausado: false,
+      timer_fim: null,
+      timer_duracao_minutos: null,
+      timer_acumulado: Math.round(getAccumulatedMs(localMachine) / 60000),
+    };
+    await persistTimerUpdate(payload);
+  };
+
+  const handlePause = async () => {
+    const now = Date.now();
+    const start = getActualStartMs(localMachine) ?? normalizeTimestampMs(localMachine?.timer_inicio);
+    const sessionMs = start !== null ? Math.max(0, now - start) : 0;
+    const totalMs = getAccumulatedMs(localMachine) + sessionMs;
+    const payload = {
+      actualTimeSpent: totalMs,
+      actualStartTime: null,
+      ...buildStatusPayload(localMachine, STATUS.PAUSED),
+      timer_ativo: false,
+      timer_pausado: true,
+      timer_acumulado: Math.round(totalMs / 60000),
+    };
+    await persistTimerUpdate(payload);
+  };
+
+  const handleStop = async () => {
+    const now = Date.now();
+    const nowIso = new Date(now).toISOString();
+    const start = getActualStartMs(localMachine) ?? normalizeTimestampMs(localMachine?.timer_inicio);
+    const sessionMs = start !== null ? Math.max(0, now - start) : 0;
+    const totalMs = getAccumulatedMs(localMachine) + (getActualStartMs(localMachine) !== null || isLegacyActive ? sessionMs : 0);
+    const totalMinutes = Math.round(totalMs / 60000);
+    const payload = {
+      actualTimeSpent: totalMs,
+      actualStartTime: null,
+      actualEndDate: now,
+      actualEndTime: now,
+      ...buildStatusPayload(localMachine, STATUS.DONE),
+      timer_ativo: false,
+      timer_pausado: false,
+      timer_fim: nowIso,
+      timer_duracao_minutos: totalMinutes,
+      timer_acumulado: totalMinutes,
+      dataConclusao: nowIso,
+    };
+    await persistTimerUpdate(payload);
+  };
+
+  const handleReset = async () => {
+    const payload = {
+      actualStartTime: null,
+      actualTimeSpent: 0,
+      actualEndDate: null,
+      actualEndTime: null,
+      ...buildStatusPayload(localMachine, STATUS.TODO),
+      timer_ativo: false,
+      timer_pausado: false,
+      timer_inicio: null,
+      timer_fim: null,
+      timer_duracao_minutos: null,
+      timer_acumulado: 0,
+    };
+    await persistTimerUpdate(payload);
+  };
 
   // Handler universal: usa onPointerDown para garantir que o evento é capturado
   // antes de qualquer outro listener (especialmente em containers com onClick global).
-  const handleAction = async (action, ...args) => {
+  const handleAction = async (action) => {
     if (loading) return;
     if (typeof action !== "function") {
       console.error("[TimerButton] Handler não é uma função:", action);
@@ -113,19 +295,12 @@ export default function TimerButton({
     }
     setLoading(true);
     try {
-      console.log("[TimerButton] Disparando ação:", action.name || "anonymous", "args:", args);
-      await action(...args);
+      await action();
     } catch (err) {
       console.error("[TimerButton] Erro na ação:", err);
     } finally {
       setLoading(false);
     }
-  };
-
-  // Stop click propagation in a container without blocking children
-  const stopAndPrevent = (e) => {
-    e.stopPropagation();
-    e.preventDefault();
   };
 
   // Wrapper para botão genérico
@@ -156,7 +331,7 @@ export default function TimerButton({
         {/* INICIAR */}
         {idle && (
           <TimerActionButton
-            onAction={() => handleAction(onStart, machine.id)}
+            onAction={() => handleAction(handlePlay)}
             disabled={loading}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold transition-all disabled:opacity-50 shadow cursor-pointer"
           >
@@ -169,7 +344,7 @@ export default function TimerButton({
         {ativo && !pausado && (
           <>
             <TimerActionButton
-              onAction={() => handleAction(onPause, machine.id, elapsedMin)}
+              onAction={() => handleAction(handlePause)}
               disabled={loading}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-yellow-500 hover:bg-yellow-400 active:scale-95 text-white text-xs font-bold transition-all disabled:opacity-50 shadow cursor-pointer"
             >
@@ -184,7 +359,7 @@ export default function TimerButton({
                   return;
                 }
                 setConfirmStop(false);
-                handleAction(onStop, machine.id, elapsedMin);
+                handleAction(handleStop);
               }}
               disabled={loading}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-bold transition-all disabled:opacity-50 shadow cursor-pointer ${confirmStop ? "bg-red-700 animate-pulse" : "bg-red-600 hover:bg-red-500"}`}
@@ -199,7 +374,7 @@ export default function TimerButton({
         {pausado && (
           <>
             <TimerActionButton
-              onAction={() => handleAction(onResume, machine.id)}
+              onAction={() => handleAction(handlePlay)}
               disabled={loading}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold transition-all disabled:opacity-50 shadow cursor-pointer"
             >
@@ -214,7 +389,7 @@ export default function TimerButton({
                   return;
                 }
                 setConfirmStop(false);
-                handleAction(onStop, machine.id, elapsedMin);
+                handleAction(handleStop);
               }}
               disabled={loading}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-bold transition-all disabled:opacity-50 shadow cursor-pointer ${confirmStop ? "bg-red-700 animate-pulse" : "bg-red-600 hover:bg-red-500"}`}
@@ -234,7 +409,7 @@ export default function TimerButton({
         )}
 
         {/* RESET — só admin */}
-        {isAdmin && machine?.timer_inicio && (
+        {isAdmin && (localMachine?.actualStartTime || localMachine?.actualTimeSpent || localMachine?.timer_inicio) && (
           <TimerActionButton
             onAction={() => {
               if (!confirmReset) {
@@ -243,7 +418,7 @@ export default function TimerButton({
                 return;
               }
               setConfirmReset(false);
-              handleAction(onReset, machine.id);
+              handleAction(handleReset);
             }}
             disabled={loading}
             className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-50 ml-auto cursor-pointer ${
@@ -284,10 +459,12 @@ export default function TimerButton({
       )}
 
       {/* Metadados */}
-      {machine?.timer_inicio && (
+      {(localMachine?.actualStartTime || localMachine?.timer_inicio) && (
         <div className="text-[10px] text-slate-400 leading-tight space-y-0.5 mt-0.5">
-          <p>▶ Início: {formatDateTime(machine.timer_inicio)}</p>
-          {machine?.timer_fim && <p>⏹ Fim: {formatDateTime(machine.timer_fim)}</p>}
+          <p>▶ Início: {formatDateTime(localMachine.actualStartTime || localMachine.timer_inicio)}</p>
+          {(localMachine?.actualEndDate || localMachine?.actualEndTime || localMachine?.timer_fim) && (
+            <p>⏹ Fim: {formatDateTime(localMachine.actualEndDate || localMachine.actualEndTime || localMachine.timer_fim)}</p>
+          )}
         </div>
       )}
     </div>
