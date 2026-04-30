@@ -724,22 +724,7 @@ export default function Dashboard() {
       alert(`${patrickMachines.length} máquina(s) arquivada(s) com sucesso.`);
     } catch (error) { console.error('Erro ao arquivar máquinas:', error); alert('Erro ao arquivar máquinas. Tente novamente.'); }
   };
-  const handleRecoverYanoMachines = async () => {
-    const yanoSeries = ["516221Y02010", "F21076X00196", "F21076X00194", "516219V00045", "516230J00200", "516225J00266", "F20615V00494", "516305Y00045", "W42362X01321"];
-    if (!window.confirm(`Recuperar ${yanoSeries.length} máquina(s) do Yano no histórico? Esta ação atualizará o estado e o técnico.`)) return;
-    try {
-      let recovered = 0;
-      for (const serie of yanoSeries) {
-        const machine = machines.find(m => m.serie === serie);
-        if (machine) {
-          await FrotaACP.update(machine.id, { tecnico: "yano", estado: "concluida-yano" });
-          recovered++;
-        }
-      }
-      await loadMachines();
-      alert(`${recovered}/${yanoSeries.length} máquina(s) recuperada(s) com sucesso.`);
-    } catch (error) { console.error("Erro ao recuperar máquinas do Yano:", error); alert("Erro ao recuperar máquinas. Tente novamente."); }
-  };
+
 
   const handleSelectMachine = (machine) => {
     if (!userPermissions?.canDeleteMachine) return;
@@ -1066,13 +1051,7 @@ export default function Dashboard() {
               ◈ BACKUP
             </button>
           )}
-          {userPermissions?.canDeleteMachine && (
-            <button
-              onPointerDown={(e) => { e.stopPropagation(); handleRecoverYanoMachines(); }}
-              style={{ padding: "6px 14px", background: isDarkMode ? "rgba(16,185,129,0.08)" : "rgba(16,185,129,0.1)", color: "#10b981", border: "1px solid rgba(16,185,129,0.35)", borderRadius: "5px", fontFamily: "monospace", fontSize: "10px", fontWeight: 700, cursor: "pointer", letterSpacing: "0.08em", position: "relative", zIndex: 50 }}>
-              ✓ RECUPERAR YANO
-            </button>
-          )}
+
           {userPermissions?.canCreateMachine && (<>
             <button
               onPointerDown={(e) => { e.stopPropagation(); setShowBulkCreateModal(true); }}
