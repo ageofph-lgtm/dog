@@ -123,7 +123,7 @@ export default function TimerButton({
   }, []);
 
   const wrap = (fn) => async (e) => {
-    e.stopPropagation();
+    // e.stopPropagation(); // Removido para evitar que bloqueie o clique em alguns contextos de modal
     if (loading) return;
     setLoading(true);
     try { await fn(); } finally { setLoading(false); }
@@ -133,7 +133,7 @@ export default function TimerButton({
   const elapsedMin = elapsed !== null ? elapsed / 60 : 0;
 
   return (
-    <div className="flex flex-col gap-1.5 w-full" onClick={e => e.stopPropagation()}>
+    <div className="flex flex-col gap-1.5 w-full">
 
       {/* ── Botões ── */}
       <div className="flex items-center gap-2 flex-wrap">

@@ -786,9 +786,10 @@ export default function Dashboard() {
 
   // ── TIMER HANDLERS ──
   const handleTimerStart = async (machineId) => {
+    console.log("handleTimerStart disparado para:", machineId);
     try {
       const machine = machines.find(m => m.id === machineId);
-      if (!machine) return;
+      if (!machine) { console.warn("Máquina não encontrada no estado local:", machineId); return; }
       
       const now = new Date().toISOString();
       const data = { 
@@ -818,9 +819,10 @@ export default function Dashboard() {
   };
 
   const handleTimerPause = async (machineId, acumuladoMinutos) => {
+    console.log("handleTimerPause disparado para:", machineId, "acumulado:", acumuladoMinutos);
     try {
       const machine = machines.find(m => m.id === machineId);
-      if (!machine) return;
+      if (!machine) { console.warn("Máquina não encontrada no estado local:", machineId); return; }
 
       // Garantir que o tempo acumulado é salvo corretamente em minutos
       const data = { 
@@ -846,9 +848,10 @@ export default function Dashboard() {
   };
 
   const handleTimerStop = async (machineId, duracaoTotal) => {
+    console.log("handleTimerStop disparado para:", machineId, "duração:", duracaoTotal);
     try {
       const machine = machines.find(m => m.id === machineId);
-      if (!machine) return;
+      if (!machine) { console.warn("Máquina não encontrada no estado local:", machineId); return; }
 
       const fim = new Date().toISOString();
       const duracaoMinutos = Math.round(duracaoTotal);
