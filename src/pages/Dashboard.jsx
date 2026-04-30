@@ -195,10 +195,12 @@ const MachineCardCompact = ({ machine, onClick, isDark, onAssign, showAssignButt
         </div>
 
         {/* Indicador de estado */}
-        <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0, padding: "4px 8px", borderRadius: "4px", background: `${stateInfo.color}15`, border: `1px solid ${stateInfo.color}40` }}>
-          <StateIcon style={{ width: "10px", height: "10px", color: stateInfo.color }} />
-          <span style={{ fontSize: "8px", fontFamily: "monospace", fontWeight: 700, color: stateInfo.color, textTransform: "uppercase", letterSpacing: "0.04em" }}>{stateInfo.label}</span>
-        </div>
+        {machine.estado !== "a-fazer" && (
+          <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0, padding: "4px 8px", borderRadius: "4px", background: `${stateInfo.color}15`, border: `1px solid ${stateInfo.color}40` }}>
+            <StateIcon style={{ width: "10px", height: "10px", color: stateInfo.color }} />
+            <span style={{ fontSize: "8px", fontFamily: "monospace", fontWeight: 700, color: stateInfo.color, textTransform: "uppercase", letterSpacing: "0.04em" }}>{stateInfo.label}</span>
+          </div>
+        )}
 
         {/* Botão atribuir */}
         {showAssignButton && onAssign && (
