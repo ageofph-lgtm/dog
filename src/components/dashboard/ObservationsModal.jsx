@@ -201,6 +201,14 @@ export default function ObservationsModal({
             {localMachine.prioridade && <AlertTriangle size={16} color={C.orange} />}
             {localMachine.aguardaPecas && <Clock size={16} color={C.yellow} />}
             <TipoIcon size={16} color={C.muted} />
+            {/* Indicador de estado */}
+            {(() => {
+              let stateColor = C.muted, stateLabel = "Indefinido";
+              if (localMachine.estado?.startsWith("concluida")) { stateColor = "#10b981"; stateLabel = "Concluída"; }
+              else if (localMachine.estado?.startsWith("em-preparacao")) { stateColor = "#f59e0b"; stateLabel = "Em Preparação"; }
+              else if (localMachine.estado === "a-fazer") { stateColor = "#ef4444"; stateLabel = "A Fazer"; }
+              return <span style={{ fontSize: "10px", fontWeight: 700, padding: "3px 8px", borderRadius: "4px", background: `${stateColor}22`, color: stateColor, fontFamily: "monospace", border: `1px solid ${stateColor}44`, textTransform: "uppercase", letterSpacing: "0.04em" }}>{stateLabel}</span>;
+            })()}
             {totalTarefas > 0 && (
               <span style={s.pill(tarefasConcluidas === totalTarefas ? C.green : C.blue, '#fff')}>
                 {tarefasConcluidas}/{totalTarefas}

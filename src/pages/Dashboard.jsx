@@ -85,6 +85,16 @@ const MachineCardCompact = ({ machine, onClick, isDark, onAssign, showAssignButt
   const reconColor   = machine.recondicao?.bronze && machine.recondicao?.prata ? '#D4AF37'
     : machine.recondicao?.bronze ? '#CD7F32'
     : machine.recondicao?.prata  ? '#C0C0C0' : null;
+  
+  // Indicador de estado
+  const getStateIndicator = () => {
+    if (machine.estado?.startsWith("concluida")) return { icon: CheckCircle2, label: "Concluída", color: "#10b981" };
+    if (machine.estado?.startsWith("em-preparacao")) return { icon: Clock, label: "Em Preparação", color: "#f59e0b" };
+    if (machine.estado === "a-fazer") return { icon: Wrench, label: "A Fazer", color: "#ef4444" };
+    return { icon: HardDrive, label: "Indefinido", color: "#6b7280" };
+  };
+  const stateInfo = getStateIndicator();
+  const StateIcon = stateInfo.icon;
 
   const BG     = isDark ? (isPrio ? '#17060E' : '#0B0B16') : (isPrio ? '#FFF2F7' : '#FFFFFF');
   const TEXT   = isDark ? '#E8E8FF' : '#080818';
@@ -182,6 +192,12 @@ const MachineCardCompact = ({ machine, onClick, isDark, onAssign, showAssignButt
               <span style={{ fontSize: '10px', fontFamily: 'monospace', fontWeight: 700, color: '#4ADE80' }}>{formatDuration(machine.timer_duracao_minutos * 60)}</span>
             </div>
           )}
+        </div>
+
+        {/* Indicador de estado */}
+        <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0, padding: "4px 8px", borderRadius: "4px", background: `${stateInfo.color}15`, border: `1px solid ${stateInfo.color}40` }}>
+          <StateIcon style={{ width: "10px", height: "10px", color: stateInfo.color }} />
+          <span style={{ fontSize: "8px", fontFamily: "monospace", fontWeight: 700, color: stateInfo.color, textTransform: "uppercase", letterSpacing: "0.04em" }}>{stateInfo.label}</span>
         </div>
 
         {/* Botão atribuir */}
