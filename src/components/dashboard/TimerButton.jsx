@@ -86,6 +86,10 @@ function getAccumulatedMs(record) {
   return 0;
 }
 
+function isTimerRunning(record) {
+  return getActualStartMs(record) !== null || (record?.timer_ativo === true && record?.timer_pausado !== true);
+}
+
 function getEntityForRecord(record) {
   const explicitEntity = record?.entityName || record?._entityName;
   if (explicitEntity && base44.entities?.[explicitEntity]) return base44.entities[explicitEntity];
@@ -147,8 +151,7 @@ export function useElapsedTimer(machine) {
     clearInterval(timerRef.current);
     timerRef.current = null;
 
-    const actualStart = getActualStartMs(machine);
-    const ativo       = actualStart !== null || (machine?.timer_ativo === true && machine?.timer_pausado !== true);
+    const ativo = isTimerRunning(machine);
 
     if (ativo) {
       const tick = () => setElapsed(computeElapsed(machineRef.current));
@@ -186,7 +189,12 @@ export default function TimerButton({
   const [localMachine, setLocalMachine] = useState(machine);
 
   useEffect(() => {
-    setLocalMachine(machine);
+    setLocalMachine(prev => {
+      if (prev?.id === machine?.id && isTimerRunning(prev) && !isTimerRunning(machine) && !getActualEndMs(prev)) {
+        return prev;
+      }
+      return machine;
+    });
   }, [machine]);
 
   const elapsed = useElapsedTimer(localMachine);
@@ -197,7 +205,7 @@ export default function TimerButton({
   const isLegacyActive = localMachine?.timer_ativo === true && localMachine?.timer_pausado !== true;
   const isLegacyPaused = localMachine?.timer_pausado === true;
 
-  const ativo = actualStart !== null || isLegacyActive;
+  const ativo = isTimerRunning(localMachine);
   const pausado = !ativo && (status === STATUS.PAUSED || isLegacyPaused);
   const done = !ativo && (status === STATUS.DONE || getActualEndMs(localMachine) !== null || localMachine?.timer_fim);
   const idle = !ativo && !pausado && !done;
@@ -213,13 +221,13 @@ export default function TimerButton({
     const now = Date.now();
     const nowIso = new Date(now).toISOString();
     const payload = {
-      actualStartTime: now,
+      actualStartTime: nowIso,
       actualTimeSpent: getAccumulatedMs(localMachine),
       actualEndDate: null,
       actualEndTime: null,
       ...buildStatusPayload(localMachine, STATUS.RUNNING),
       // Campos legados mantidos apenas para compatibilidade visual existente.
-      timer_inicio: localMachine?.timer_inicio || nowIso,
+      timer_inicio: nowIso,
       timer_ativo: true,
       timer_pausado: false,
       timer_fim: null,
@@ -255,8 +263,8 @@ export default function TimerButton({
     const payload = {
       actualTimeSpent: totalMs,
       actualStartTime: null,
-      actualEndDate: now,
-      actualEndTime: now,
+      actualEndDate: nowIso,
+      actualEndTime: nowIso,
       ...buildStatusPayload(localMachine, STATUS.DONE),
       timer_ativo: false,
       timer_pausado: false,
