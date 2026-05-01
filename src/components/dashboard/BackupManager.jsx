@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Download, Upload, AlertCircle, CheckCircle2, Loader2, HardDrive } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { freezeRunningTimersInHistorico, countRunningTimerMarkers } from "@/lib/timerHistorico";
 
 export default function BackupManager({ isOpen, onClose, onSuccess }) {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -72,6 +73,7 @@ export default function BackupManager({ isOpen, onClose, onSuccess }) {
       }
 
       const { machines, pedidos, customizations } = backupData.data;
+      const backupTimestamp = backupData.timestamp;
 
       // Apagar dados existentes
       const existingMachines = await base44.entities.FrotaACP.list();
@@ -85,8 +87,19 @@ export default function BackupManager({ isOpen, onClose, onSuccess }) {
         ...existingCustomizations.map(c => base44.entities.TechnicianCustomization.delete(c.id))
       ]);
 
-      // Criar novos registros (sem IDs para gerar novos)
-      const machinesData = machines.map(({ id, created_date, updated_date, created_by, ...rest }) => rest);
+      // Conta quantos timers iam vir activos no restore (para informar o utilizador)
+      // e converte os markers `running` em `paused`, capando o tempo no momento do
+      // backup. Sem isto, máquinas que estavam em curso no momento do backup
+      // apareceriam a contar tempo desde o backup até agora.
+      let frozenTimers = 0;
+      const machinesData = machines.map(({ id, created_date, updated_date, created_by, ...rest }) => {
+        const before = rest.historico;
+        frozenTimers += countRunningTimerMarkers(before);
+        return {
+          ...rest,
+          historico: freezeRunningTimersInHistorico(before, backupTimestamp),
+        };
+      });
       const pedidosData = pedidos.map(({ id, created_date, updated_date, created_by, ...rest }) => rest);
       const customizationsData = customizations.map(({ id, created_date, updated_date, created_by, ...rest }) => rest);
 
@@ -96,13 +109,16 @@ export default function BackupManager({ isOpen, onClose, onSuccess }) {
         ...customizationsData.map(c => base44.entities.TechnicianCustomization.create(c))
       ]);
 
-      setSuccess(`Restore concluído! ${machines.length} máquinas, ${pedidos.length} pedidos restaurados.`);
-      
+      const frozenNote = frozenTimers > 0
+        ? ` ${frozenTimers} timer(s) que estavam em curso no backup foram pausados (estado capturado em ${new Date(backupTimestamp).toLocaleString('pt-PT')}).`
+        : '';
+      setSuccess(`Restore concluído! ${machines.length} máquinas, ${pedidos.length} pedidos restaurados.${frozenNote}`);
+
       setTimeout(() => {
         onSuccess();
         onClose();
       }, 2000);
-      
+
     } catch (error) {
       console.error("Erro ao restaurar backup:", error);
       setError(`Erro ao restaurar backup: ${error.message}`);

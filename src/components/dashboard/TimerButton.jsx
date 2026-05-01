@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Play, Pause, Square, Clock, Trash2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import {
+  deriveTimerState,
+  readTimerStateFromMachine,
+  readTimerTotals,
+  withTimerStateMarker,
+  stripTimerStateMarkers,
+} from "@/lib/timerHistorico";
 
 // ─── Formatadores ────────────────────────────────────────────────────────────
 
@@ -22,7 +29,8 @@ export function formatDurationMin(minutes) {
 
 export function formatDateTime(value) {
   if (!value) return null;
-  return new Date(normalizeTimestampMs(value) ?? value).toLocaleString("pt-PT", {
+  const ms = normalizeTimestampMs(value);
+  return new Date(ms ?? value).toLocaleString("pt-PT", {
     day: "2-digit", month: "2-digit", year: "2-digit",
     hour: "2-digit", minute: "2-digit"
   });
@@ -33,7 +41,7 @@ export function saveTimerLocal(machine) {}
 export function clearTimerLocal(machineId) {}
 export function resolveTimerFields(machine) { return machine; }
 
-// ─── Helpers de persistência real ────────────────────────────────────────────
+// ─── Helpers internos ────────────────────────────────────────────────────────
 
 const STATUS = {
   TODO: "A Fazer",
@@ -59,39 +67,6 @@ function normalizeTimestampMs(value) {
   return null;
 }
 
-function getActualStartMs(record) {
-  return normalizeTimestampMs(record?.actualStartTime);
-}
-
-function getActualEndMs(record) {
-  return normalizeTimestampMs(record?.actualEndDate ?? record?.actualEndTime ?? record?.timer_fim);
-}
-
-function getAccumulatedMs(record) {
-  if (!record) return 0;
-
-  const candidates = [];
-
-  const actual = Number(record.actualTimeSpent);
-  if (Number.isFinite(actual) && actual >= 0) candidates.push(actual);
-
-  const legacyAccumulatedMinutes = Number(record.timer_acumulado);
-  if (Number.isFinite(legacyAccumulatedMinutes) && legacyAccumulatedMinutes > 0) {
-    candidates.push(legacyAccumulatedMinutes * 60 * 1000);
-  }
-
-  const legacyDurationMinutes = Number(record.timer_duracao_minutos);
-  if (Number.isFinite(legacyDurationMinutes) && legacyDurationMinutes > 0) {
-    candidates.push(legacyDurationMinutes * 60 * 1000);
-  }
-
-  return candidates.length ? Math.max(...candidates) : 0;
-}
-
-function isTimerRunning(record) {
-  return getActualStartMs(record) !== null || (record?.timer_ativo === true && record?.timer_pausado !== true);
-}
-
 function getEntityForRecord(record) {
   const explicitEntity = record?.entityName || record?._entityName;
   if (explicitEntity && base44.entities?.[explicitEntity]) return base44.entities[explicitEntity];
@@ -111,33 +86,16 @@ function buildStatusPayload(record, status) {
   return shouldWriteStatus(record) ? { status } : {};
 }
 
-function computeElapsed(m) {
-  if (!m) return null;
-
-  const actualStart = getActualStartMs(m);
-  const accumulatedMs = getAccumulatedMs(m);
-
-  // Fonte de verdade nova: ao montar/renderizar, se actualStartTime existir, o
-  // cronómetro retoma em (Date.now() - actualStartTime) + actualTimeSpent.
-  if (actualStart !== null) {
-    return (accumulatedMs + Math.max(0, Date.now() - actualStart)) / 1000;
+function computeElapsedSeconds(machine) {
+  if (!machine) return null;
+  const totals = readTimerTotals(machine);
+  if (totals.runningSinceMs !== null) {
+    return (totals.accumulatedMs + Math.max(0, Date.now() - totals.runningSinceMs)) / 1000;
   }
-
-  if (accumulatedMs > 0) return accumulatedMs / 1000;
-
-  // Compatibilidade com dados legados ainda existentes no backend.
-  const ativo   = m.timer_ativo   === true;
-  const pausado = m.timer_pausado === true;
-  const acumSec = (m.timer_acumulado || 0) * 60;
-
-  if (ativo && !pausado && m.timer_inicio) {
-    const diff = (Date.now() - new Date(m.timer_inicio).getTime()) / 1000;
-    return acumSec + diff;
-  }
-  if (pausado) return acumSec;
-  if (!ativo && m.timer_duracao_minutos != null) {
-    return m.timer_duracao_minutos * 60;
-  }
+  if (totals.accumulatedMs > 0) return totals.accumulatedMs / 1000;
+  // Compatibilidade com dados antigos sem marker mas com timer_duracao_minutos.
+  const legacyDur = Number(machine.timer_duracao_minutos);
+  if (Number.isFinite(legacyDur) && legacyDur > 0) return legacyDur * 60;
   return null;
 }
 
@@ -145,26 +103,32 @@ function computeElapsed(m) {
 export function useElapsedTimer(machine) {
   const timerRef   = useRef(null);
   const machineRef = useRef(machine);
-  const [elapsed, setElapsed] = useState(() => computeElapsed(machine));
+  const [elapsed, setElapsed] = useState(() => computeElapsedSeconds(machine));
 
   useEffect(() => { machineRef.current = machine; });
+
+  const marker = readTimerStateFromMachine(machine);
 
   useEffect(() => {
     clearInterval(timerRef.current);
     timerRef.current = null;
 
-    const ativo = isTimerRunning(machine);
+    const running = deriveTimerState(machine) === 'running';
 
-    if (ativo) {
-      const tick = () => setElapsed(computeElapsed(machineRef.current));
+    if (running) {
+      const tick = () => setElapsed(computeElapsedSeconds(machineRef.current));
       tick();
       timerRef.current = setInterval(tick, 1000);
     } else {
-      setElapsed(computeElapsed(machine));
+      setElapsed(computeElapsedSeconds(machine));
     }
 
     return () => { clearInterval(timerRef.current); timerRef.current = null; };
   }, [
+    marker?.state,
+    marker?.startTime,
+    marker?.accumulatedMs,
+    marker?.updatedAt,
     machine?.actualStartTime,
     machine?.actualTimeSpent,
     machine?.actualEndDate,
@@ -180,10 +144,10 @@ export function useElapsedTimer(machine) {
   return elapsed;
 }
 
-// ─── Componente principal ────────────────────────────────────────────────────
+// ─── Componente principal (utilizado em fluxos legados; o Dashboard tem UI inline) ─
 
 export default function TimerButton({
-  machine, currentUser, userPermissions, onStart, onPause, onResume, onStop, onReset, onPersist, isAdmin
+  machine, currentUser, userPermissions, onPersist, isAdmin
 }) {
   const [loading,      setLoading]      = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
@@ -192,7 +156,14 @@ export default function TimerButton({
 
   useEffect(() => {
     setLocalMachine(prev => {
-      if (prev?.id === machine?.id && isTimerRunning(prev) && !isTimerRunning(machine) && !getActualEndMs(prev)) {
+      if (
+        prev?.id === machine?.id
+        && deriveTimerState(prev) === 'running'
+        && deriveTimerState(machine) !== 'running'
+        && !machine?.actualEndDate
+        && !machine?.actualEndTime
+        && !machine?.timer_fim
+      ) {
         return prev;
       }
       return machine;
@@ -200,22 +171,18 @@ export default function TimerButton({
   }, [machine]);
 
   const elapsed = useElapsedTimer(localMachine);
+  const state = deriveTimerState(localMachine);
+  const totals = readTimerTotals(localMachine);
 
   const isAdminUser = isAdmin || userPermissions?.canMoveAnyMachine === true;
   const currentTechnician = currentUser?.nome_tecnico || userPermissions?.technicianName;
   const ownsMachine = Boolean(currentTechnician && localMachine?.tecnico === currentTechnician);
   const canControlTimer = isAdminUser || ownsMachine;
 
-  const actualStart = getActualStartMs(localMachine);
-  const accumulatedMs = getAccumulatedMs(localMachine);
-  const status = localMachine?.status;
-  const isLegacyActive = localMachine?.timer_ativo === true && localMachine?.timer_pausado !== true;
-  const isLegacyPaused = localMachine?.timer_pausado === true;
-
-  const ativo = isTimerRunning(localMachine);
-  const pausado = !ativo && (status === STATUS.PAUSED || isLegacyPaused);
-  const done = !ativo && (status === STATUS.DONE || getActualEndMs(localMachine) !== null || localMachine?.timer_fim);
-  const idle = !ativo && !pausado && !done;
+  const ativo = state === 'running';
+  const pausado = state === 'paused';
+  const done = state === 'done';
+  const idle = state === 'idle';
 
   const loadCanonicalRecord = async () => {
     if (!localMachine?.id) throw new Error("Registo sem id para persistir timer.");
@@ -243,9 +210,13 @@ export default function TimerButton({
     if (!baseRecord?.id) throw new Error("Registo sem id para persistir timer.");
     const optimisticRecord = { ...baseRecord, ...payload };
 
-    // A gravação no banco é a fonte de verdade. Só depois de persistir propagamos
-    // a máquina atualizada para o card, para a listagem e para os outros ambientes.
-    const updateResult = await entity.update(baseRecord.id, payload);
+    let updateResult;
+    try {
+      updateResult = await entity.update(baseRecord.id, payload);
+    } catch (err) {
+      console.error("[TimerButton] Falha ao persistir timer:", err);
+      throw err;
+    }
     const persistedRecord = updateResult && typeof updateResult === "object"
       ? { ...optimisticRecord, ...updateResult }
       : optimisticRecord;
@@ -259,25 +230,37 @@ export default function TimerButton({
     return false;
   };
 
+  const buildMarkerPayload = (record, nextMarker) => ({
+    historico: withTimerStateMarker(record?.historico, nextMarker),
+  });
+
+  const author = () => currentUser?.nome_tecnico || currentUser?.perfil || (isAdminUser ? 'admin' : 'sistema');
+
   const handlePlay = async () => {
     if (!ensureCanControlTimer()) return;
 
     const { entity, record } = await loadCanonicalRecord();
-    if (isTimerRunning(record)) {
+    if (deriveTimerState(record) === 'running') {
       publishPersistedRecord(record);
       return;
     }
 
     const now = Date.now();
     const nowIso = new Date(now).toISOString();
-    const accumulated = getAccumulatedMs(record);
+    const accumulated = readTimerTotals(record).accumulatedMs;
     const payload = {
+      ...buildMarkerPayload(record, {
+        state: 'running',
+        startTime: nowIso,
+        accumulatedMs: accumulated,
+        updatedAt: nowIso,
+        by: author(),
+      }),
       actualStartTime: nowIso,
       actualTimeSpent: accumulated,
       actualEndDate: null,
       actualEndTime: null,
       ...buildStatusPayload(record, STATUS.RUNNING),
-      // Campos legados mantidos apenas para compatibilidade visual existente.
       timer_inicio: nowIso,
       timer_ativo: true,
       timer_pausado: false,
@@ -293,10 +276,18 @@ export default function TimerButton({
 
     const { entity, record } = await loadCanonicalRecord();
     const now = Date.now();
-    const start = getActualStartMs(record) ?? normalizeTimestampMs(record?.timer_inicio);
-    const sessionMs = start !== null ? Math.max(0, now - start) : 0;
-    const totalMs = getAccumulatedMs(record) + sessionMs;
+    const totals = readTimerTotals(record);
+    const sessionMs = totals.runningSinceMs !== null ? Math.max(0, now - totals.runningSinceMs) : 0;
+    const totalMs = totals.accumulatedMs + sessionMs;
+    const nowIso = new Date(now).toISOString();
     const payload = {
+      ...buildMarkerPayload(record, {
+        state: 'paused',
+        startTime: null,
+        accumulatedMs: totalMs,
+        updatedAt: nowIso,
+        by: author(),
+      }),
       actualTimeSpent: totalMs,
       actualStartTime: null,
       ...buildStatusPayload(record, STATUS.PAUSED),
@@ -313,11 +304,18 @@ export default function TimerButton({
     const { entity, record } = await loadCanonicalRecord();
     const now = Date.now();
     const nowIso = new Date(now).toISOString();
-    const start = getActualStartMs(record) ?? normalizeTimestampMs(record?.timer_inicio);
-    const sessionMs = start !== null ? Math.max(0, now - start) : 0;
-    const totalMs = getAccumulatedMs(record) + (isTimerRunning(record) ? sessionMs : 0);
+    const totals = readTimerTotals(record);
+    const sessionMs = totals.runningSinceMs !== null ? Math.max(0, now - totals.runningSinceMs) : 0;
+    const totalMs = totals.accumulatedMs + sessionMs;
     const totalMinutes = Math.round(totalMs / 60000);
     const payload = {
+      ...buildMarkerPayload(record, {
+        state: 'done',
+        startTime: null,
+        accumulatedMs: totalMs,
+        updatedAt: nowIso,
+        by: author(),
+      }),
       actualTimeSpent: totalMs,
       actualStartTime: null,
       actualEndDate: nowIso,
@@ -341,6 +339,7 @@ export default function TimerButton({
 
     const { entity, record } = await loadCanonicalRecord();
     const payload = {
+      historico: stripTimerStateMarkers(record?.historico),
       actualStartTime: null,
       actualTimeSpent: 0,
       actualEndDate: null,
@@ -356,8 +355,6 @@ export default function TimerButton({
     await persistTimerUpdate(entity, record, payload);
   };
 
-  // Handler universal: usa onPointerDown para garantir que o evento é capturado
-  // antes de qualquer outro listener (especialmente em containers com onClick global).
   const handleAction = async (action) => {
     if (loading) return;
     if (typeof action !== "function") {
@@ -374,7 +371,6 @@ export default function TimerButton({
     }
   };
 
-  // Wrapper para botão genérico
   const TimerActionButton = ({ onAction, disabled, className, children }) => (
     <button
       type="button"
@@ -391,6 +387,9 @@ export default function TimerButton({
     </button>
   );
 
+  const hasAnyTimerData = totals.accumulatedMs > 0 || totals.runningSinceMs !== null
+    || localMachine?.actualStartTime || localMachine?.actualTimeSpent || localMachine?.timer_inicio;
+
   return (
     <div
       className="flex flex-col gap-1.5 w-full"
@@ -399,7 +398,6 @@ export default function TimerButton({
     >
       <div className="flex items-center gap-2 flex-wrap">
 
-        {/* INICIAR */}
         {idle && (
           <TimerActionButton
             onAction={() => handleAction(handlePlay)}
@@ -411,7 +409,6 @@ export default function TimerButton({
           </TimerActionButton>
         )}
 
-        {/* EM CURSO → PAUSAR + CONCLUIR */}
         {ativo && !pausado && (
           <>
             <TimerActionButton
@@ -441,7 +438,6 @@ export default function TimerButton({
           </>
         )}
 
-        {/* PAUSADO → RETOMAR + CONCLUIR */}
         {pausado && (
           <>
             <TimerActionButton
@@ -471,7 +467,6 @@ export default function TimerButton({
           </>
         )}
 
-        {/* CONCLUÍDO */}
         {done && (
           <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-500">
             <Clock className="w-3.5 h-3.5" />
@@ -479,8 +474,7 @@ export default function TimerButton({
           </span>
         )}
 
-        {/* RESET — só admin */}
-        {isAdminUser && (localMachine?.actualStartTime || localMachine?.actualTimeSpent || localMachine?.timer_inicio) && (
+        {isAdminUser && hasAnyTimerData && (
           <TimerActionButton
             onAction={() => {
               if (!confirmReset) {
@@ -504,7 +498,6 @@ export default function TimerButton({
         )}
       </div>
 
-      {/* Cronómetro ao vivo */}
       {ativo && !pausado && elapsed !== null && (
         <div className="flex items-center gap-2 font-mono">
           <span className="relative flex h-2 w-2">
@@ -518,7 +511,6 @@ export default function TimerButton({
         </div>
       )}
 
-      {/* Pausado */}
       {pausado && elapsed !== null && (
         <div className="flex items-center gap-2 font-mono">
           <Pause className="w-3 h-3 text-yellow-500" />
@@ -529,7 +521,6 @@ export default function TimerButton({
         </div>
       )}
 
-      {/* Metadados */}
       {(localMachine?.actualStartTime || localMachine?.timer_inicio) && (
         <div className="text-[10px] text-slate-400 leading-tight space-y-0.5 mt-0.5">
           <p>▶ Início: {formatDateTime(localMachine.actualStartTime || localMachine.timer_inicio)}</p>
