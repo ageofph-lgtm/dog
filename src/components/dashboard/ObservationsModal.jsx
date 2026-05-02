@@ -210,14 +210,27 @@ export default function ObservationsModal({
 
   const updateTimerDB = async (osId, isRunning, startTime, newAccumulated) => {
     try {
+      // Otimismo local para resposta imediata na UI
+      const startTimeIso = startTime ? new Date(startTime).toISOString() : null;
+      const optimisticUpdate = {
+        ...localMachine,
+        actualStartTime: startTimeIso,
+        actualTimeSpent: newAccumulated,
+        status: isRunning ? 'Em Progresso' : 'Pausado',
+        timer_ativo: isRunning,
+        timer_pausado: !isRunning && newAccumulated > 0,
+        _timerPersistedAt: Date.now()
+      };
+      setLocalMachine(optimisticUpdate);
+
       const payload = {
-        actualStartTime: startTime ? new Date(startTime).toISOString() : null,
+        actualStartTime: startTimeIso,
         actualTimeSpent: newAccumulated,
         status: isRunning ? 'Em Progresso' : 'Pausado',
         // Compatibilidade legada
         timer_ativo: isRunning,
         timer_pausado: !isRunning && newAccumulated > 0,
-        timer_inicio: startTime ? new Date(startTime).toISOString() : null,
+        timer_inicio: startTimeIso,
         timer_acumulado: Math.round(newAccumulated / 60000)
       };
       
@@ -231,7 +244,9 @@ export default function ObservationsModal({
       }
     } catch (error) {
       console.error("Erro ao atualizar timer no DB:", error);
-      alert("Erro ao salvar tempo no servidor.");
+      // Reverter estado local em caso de erro (opcional, mas seguro)
+      setLocalMachine(machine);
+      alert("Erro ao salvar tempo no servidor. Verifique a sua ligação.");
     }
   };
 

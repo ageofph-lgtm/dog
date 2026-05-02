@@ -18,42 +18,49 @@ export function formatDuration(ms) {
 
 export default function TimerButton({
   osId,
-  initialStartTime, // timestamp de quando o play foi dado
+  initialStartTime, // ISO string ou timestamp de quando o play foi dado
   accumulatedTime,  // tempo guardado em milissegundos
   updateTimerDB,    // função updateTimerDB(osId, isRunning, startTime, newAccumulated)
   isDark = false
 }) {
-  const [isRunning, setIsRunning] = useState(!!initialStartTime);
   const [elapsedTime, setElapsedTime] = useState(accumulatedTime || 0);
+  const isRunning = !!initialStartTime;
 
   useEffect(() => {
     let intervalId;
-    if (isRunning && initialStartTime) {
-      intervalId = setInterval(() => {
-        const now = Date.now();
-        // O tempo atual é o acumulado + a diferença desde o último Play
+    
+    const calculateTime = () => {
+      if (isRunning && initialStartTime) {
         const startTime = typeof initialStartTime === 'string' 
           ? new Date(initialStartTime).getTime() 
           : initialStartTime;
-        setElapsedTime((accumulatedTime || 0) + (now - startTime));
-      }, 1000);
-    } else {
-      setElapsedTime(accumulatedTime || 0);
+        const now = Date.now();
+        const currentElapsed = (accumulatedTime || 0) + (now - startTime);
+        setElapsedTime(currentElapsed);
+      } else {
+        setElapsedTime(accumulatedTime || 0);
+      }
+    };
+
+    // Calcular imediatamente para evitar delay de 1s
+    calculateTime();
+
+    if (isRunning) {
+      intervalId = setInterval(calculateTime, 1000);
     }
+
     return () => clearInterval(intervalId);
   }, [isRunning, initialStartTime, accumulatedTime]);
 
   const handleToggle = async () => {
     const now = Date.now();
     if (!isRunning) {
-      // Se vai dar Play
-      setIsRunning(true);
+      // Se vai dar Play: Passamos o tempo atual como base para o novo acumulado
       if (typeof updateTimerDB === "function") {
         await updateTimerDB(osId, true, now, elapsedTime);
       }
     } else {
-      // Se vai dar Pause
-      setIsRunning(false);
+      // Se vai dar Pause: O novo acumulado é o tempo decorrido até agora
       if (typeof updateTimerDB === "function") {
         await updateTimerDB(osId, false, null, elapsedTime);
       }
@@ -104,7 +111,7 @@ export default function TimerButton({
           cursor: 'pointer',
           background: isRunning ? C.yellow : C.green,
           color: '#fff',
-          transition: 'transform 0.1s active'
+          transition: 'all 0.2s'
         }}
       >
         {isRunning ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" style={{ marginLeft: '2px' }} />}
