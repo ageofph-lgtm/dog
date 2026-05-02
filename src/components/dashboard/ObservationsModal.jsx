@@ -208,10 +208,30 @@ export default function ObservationsModal({
   const canEditThisMachine = isAdmin || isMyMachine;
   const canEditTasks = localMachine.estado?.includes('em-preparacao') && canEditThisMachine;
 
-  const handleTimerPersistLocal = (updatedMachine) => {
-    setLocalMachine({ ...updatedMachine, _timerPersistedAt: Date.now() });
-    if (typeof onTimerPersist === 'function') {
-      onTimerPersist(updatedMachine);
+  const updateTimerDB = async (osId, isRunning, startTime, newAccumulated) => {
+    try {
+      const payload = {
+        actualStartTime: startTime ? new Date(startTime).toISOString() : null,
+        actualTimeSpent: newAccumulated,
+        status: isRunning ? 'Em Progresso' : 'Pausado',
+        // Compatibilidade legada
+        timer_ativo: isRunning,
+        timer_pausado: !isRunning && newAccumulated > 0,
+        timer_inicio: startTime ? new Date(startTime).toISOString() : null,
+        timer_acumulado: Math.round(newAccumulated / 60000)
+      };
+      
+      const updated = await FrotaACP.update(osId, payload);
+      if (updated) {
+        const withTimestamp = { ...updated, _timerPersistedAt: Date.now() };
+        setLocalMachine(withTimestamp);
+        if (typeof onTimerPersist === 'function') {
+          onTimerPersist(withTimestamp);
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao atualizar timer no DB:", error);
+      alert("Erro ao salvar tempo no servidor.");
     }
   };
 
@@ -298,17 +318,11 @@ export default function ObservationsModal({
             <div style={{ ...s.section, marginBottom: '14px' }}>
               <span style={s.label}>⏱ Timer de Trabalho</span>
               <TimerButton
-                machine={localMachine}
-                currentUser={currentUser}
-                userPermissions={userPermissions}
+                osId={localMachine.id}
+                initialStartTime={localMachine.actualStartTime}
+                accumulatedTime={localMachine.actualTimeSpent}
+                updateTimerDB={updateTimerDB}
                 isDark={isDark}
-                onStart={onTimerStart}
-                onPause={onTimerPause}
-                onResume={onTimerResume}
-                onStop={onTimerStop}
-                onReset={onTimerReset}
-                onPersist={handleTimerPersistLocal}
-                isAdmin={userPermissions?.canMoveAnyMachine}
               />
             </div>
           )}
