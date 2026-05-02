@@ -14,6 +14,26 @@ export function formatDuration(ms) {
   return `${pad(m)}:${pad(sec)}`;
 }
 
+export function formatDurationMin(minutes) {
+  if (minutes === null || minutes === undefined) return null;
+  return formatDuration(Math.round(minutes) * 60 * 1000);
+}
+
+export function formatDateTime(value) {
+  if (!value) return null;
+  const date = typeof value === 'string' ? new Date(value) : new Date(value);
+  return date.toLocaleString("pt-PT", {
+    day: "2-digit", month: "2-digit", year: "2-digit",
+    hour: "2-digit", minute: "2-digit"
+  });
+}
+
+// ─── Persistência local (Stubs para compatibilidade) ─────────────────────────
+export function saveTimerLocal(machine) {}
+export function clearTimerLocal(machineId) {}
+export function resolveTimerFields(machine) { return machine; }
+export function useElapsedTimer(machine) { return 0; }
+
 // ─── Componente principal ────────────────────────────────────────────────────
 
 export default function TimerButton({
