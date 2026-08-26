@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Camera, Loader2, AlertCircle, Zap, RefreshCw } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { UploadFile, ExtractDataFromUploadedFile } from "@/integrations/Core";
+import { base44 } from "@/api/base44Client";
 
 export default function ImageUploadModal({ isOpen, onClose, onSuccess, purpose = 'create' }) {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -34,24 +34,47 @@ export default function ImageUploadModal({ isOpen, onClose, onSuccess, purpose =
     setError(null);
 
     try {
-      const { file_url } = await UploadFile({ file: selectedFile });
-      
-      const schema = getSchema();
-      const extractionResult = await ExtractDataFromUploadedFile({
-        file_url: file_url,
-        json_schema: schema,
+      const { file_url } = await base44.integrations.Core.UploadFile({ file: selectedFile });
+
+      const result = await base44.integrations.Core.InvokeLLM({
+        prompt: `Estás a analisar a fotografia de uma placa de identificação (nameplate) de uma máquina industrial / empilhador (marcas como Toyota, BT, Linde, Still, etc.).
+
+Extrai com máxima precisão:
+1. "modelo" — o modelo da máquina (ex: FM-X17, 8FBE20T, RRE160H, EXV14, RX60-30). Normalmente identificado como "Model", "Type", "Typ" ou "Modelo".
+2. "serie" — o NÚMERO DE SÉRIE completo. Normalmente identificado como "Serial No.", "Serial Number", "S/N", "Fabr. No.", "Nr." ou "Série".
+3. "ano" — o ano de fabrico (ex: 2019). Identificado como "Year", "Baujahr" ou "Ano".
+
+REGRAS CRÍTICAS PARA O NÚMERO DE SÉRIE:
+- Transcreve CARÁCTER A CARÁCTER, exatamente como está gravado. Não corrijas, não normalizes, não removas zeros.
+- Presta muita atenção a caracteres facilmente confundíveis: 0 (zero) vs O (letra), 1 vs I vs l, 5 vs S, 8 vs B, 2 vs Z. Usa o contexto: séries destas máquinas são maioritariamente dígitos com algumas letras maiúsculas (ex: 511903H00533, F20323H00856).
+- Inclui TODOS os caracteres, incluindo letras no meio e zeros à esquerda. NÃO incluas espaços.
+- Se um campo não for legível com confiança, devolve null nesse campo em vez de adivinhar.`,
+        file_urls: [file_url],
+        response_json_schema: {
+          type: "object",
+          properties: {
+            modelo: { type: ["string", "null"] },
+            serie: { type: ["string", "null"] },
+            ano: { type: ["number", "null"] }
+          }
+        }
       });
 
-      if (extractionResult.status === 'success' && extractionResult.output) {
-        const extractedData = { ...extractionResult.output };
-        if (purpose === 'create' && extractedData.ano) {
-           extractedData.ano = !isNaN(parseInt(extractedData.ano)) ? parseInt(extractedData.ano) : '';
+      if (result && (result.serie || result.modelo)) {
+        if (purpose === 'search') {
+          if (!result.serie) throw new Error("Não foi possível ler o número de série na imagem.");
+          onSuccess({ serie: result.serie, imageUrl: file_url });
+        } else {
+          onSuccess({
+            modelo: result.modelo || '',
+            serie: result.serie || '',
+            ano: result.ano || '',
+            imageUrl: file_url
+          });
         }
-        extractedData.imageUrl = file_url;
-        onSuccess(extractedData);
         handleClose();
       } else {
-        throw new Error(extractionResult.details || "A extração de dados falhou. Tente novamente.");
+        throw new Error("Não foi possível extrair dados da imagem. Tente uma foto mais nítida e próxima da placa.");
       }
     } catch (error) {
       console.error("Erro ao processar imagem:", error);
@@ -65,23 +88,6 @@ export default function ImageUploadModal({ isOpen, onClose, onSuccess, purpose =
     setIsProcessing(false);
   };
 
-  const getSchema = () => {
-    if (purpose === 'search') {
-      return {
-        type: "object",
-        properties: { "serie": { "type": "string", "description": "O número de série da máquina" } }
-      };
-    }
-    return {
-      type: "object",
-      properties: {
-        "modelo": { "type": "string", "description": "O modelo da máquina" },
-        "serie": { "type": "string", "description": "O número de série da máquina" },
-        "ano": { "type": "string", "description": "O ano de fabrico da máquina" }
-      }
-    };
-  };
-  
   const handleRetry = () => {
     if (retryCount < 3) {
       setRetryCount(prev => prev + 1);
