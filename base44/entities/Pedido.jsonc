@@ -1,0 +1,49 @@
+{
+  "name": "Pedido",
+  "type": "object",
+  "properties": {
+    "numeroPedido": {
+      "type": "string",
+      "description": "N\u00famero do pedido inserido pelo t\u00e9cnico"
+    },
+    "maquinaId": {
+      "type": "string",
+      "description": "ID da m\u00e1quina relacionada"
+    },
+    "maquinaSerie": {
+      "type": "string",
+      "description": "N\u00famero de s\u00e9rie da m\u00e1quina"
+    },
+    "maquinaModelo": {
+      "type": "string",
+      "description": "Modelo da m\u00e1quina"
+    },
+    "tecnico": {
+      "type": "string",
+      "description": "Nome do t\u00e9cnico que fez o pedido"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pendente",
+        "concluido"
+      ],
+      "default": "pendente",
+      "description": "Status do pedido"
+    },
+    "observacoes": {
+      "type": "string",
+      "description": "Observa\u00e7\u00f5es adicionais"
+    },
+    "dataConclusao": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data de conclus\u00e3o do pedido"
+    }
+  },
+  "required": [
+    "numeroPedido",
+    "maquinaId",
+    "tecnico"
+  ]
+}

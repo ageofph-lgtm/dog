@@ -1,0 +1,51 @@
+{
+  "name": "Notificacao",
+  "type": "object",
+  "properties": {
+    "userId": {
+      "type": "string",
+      "description": "ID do utilizador destinat\u00e1rio"
+    },
+    "message": {
+      "type": "string",
+      "description": "Mensagem da notifica\u00e7\u00e3o"
+    },
+    "osId": {
+      "type": "string",
+      "description": "ID da ordem de servi\u00e7o relacionada"
+    },
+    "machineId": {
+      "type": "string",
+      "description": "ID da m\u00e1quina relacionada"
+    },
+    "machineSerie": {
+      "type": "string",
+      "description": "S\u00e9rie da m\u00e1quina"
+    },
+    "technicianName": {
+      "type": "string",
+      "description": "Nome do t\u00e9cnico que atribuiu"
+    },
+    "isRead": {
+      "type": "boolean",
+      "default": false,
+      "description": "Estado de leitura"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "status_change",
+        "new_os",
+        "maintenance",
+        "deadline",
+        "os_assignment"
+      ],
+      "default": "status_change",
+      "description": "Tipo de notifica\u00e7\u00e3o"
+    }
+  },
+  "required": [
+    "userId",
+    "message"
+  ]
+}

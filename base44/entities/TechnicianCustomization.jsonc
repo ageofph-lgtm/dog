@@ -1,0 +1,31 @@
+{
+  "name": "TechnicianCustomization",
+  "type": "object",
+  "properties": {
+    "nome_tecnico": {
+      "type": "string",
+      "enum": [
+        "raphael",
+        "nuno",
+        "rogerio",
+        "patrick"
+      ],
+      "description": "Nome do t\u00e9cnico (\u00fanico)"
+    },
+    "cor": {
+      "type": "string",
+      "description": "Cor s\u00f3lida personalizada (hex)"
+    },
+    "gradient": {
+      "type": "string",
+      "description": "Gradiente CSS personalizado"
+    },
+    "avatar": {
+      "type": "string",
+      "description": "URL do avatar personalizado"
+    }
+  },
+  "required": [
+    "nome_tecnico"
+  ]
+}

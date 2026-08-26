@@ -1,0 +1,160 @@
+{
+  "name": "FrotaACP",
+  "type": "object",
+  "properties": {
+    "modelo": {
+      "type": "string",
+      "description": "Modelo da m\u00e1quina"
+    },
+    "serie": {
+      "type": "string",
+      "description": "N\u00famero de s\u00e9rie"
+    },
+    "ano": {
+      "type": "number",
+      "description": "Ano de fabrico"
+    },
+    "imageUrl": {
+      "type": "string",
+      "description": "URL da imagem da m\u00e1quina"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "nova",
+        "usada",
+        "aluguer"
+      ],
+      "default": "nova",
+      "description": "Tipo da m\u00e1quina"
+    },
+    "recondicao": {
+      "type": "object",
+      "properties": {
+        "bronze": {
+          "type": "boolean",
+          "default": false
+        },
+        "prata": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "description": "Status de recondicionamento"
+    },
+    "prioridade": {
+      "type": "boolean",
+      "default": false,
+      "description": "Se a m\u00e1quina \u00e9 priorit\u00e1ria"
+    },
+    "aguardaPecas": {
+      "type": "boolean",
+      "default": false,
+      "description": "Se a m\u00e1quina est\u00e1 aguardando pe\u00e7as"
+    },
+    "arquivada": {
+      "type": "boolean",
+      "default": false,
+      "description": "Se a m\u00e1quina est\u00e1 arquivada (ex-t\u00e9cnico)"
+    },
+    "estado": {
+      "type": "string",
+      "enum": [
+        "a-fazer",
+        "em-preparacao-raphael",
+        "concluida-raphael",
+        "em-preparacao-nuno",
+        "concluida-nuno",
+        "em-preparacao-rogerio",
+        "concluida-rogerio",
+        "em-preparacao-yano",
+        "concluida-yano",
+        "em-preparacao-patrick",
+        "concluida-patrick"
+      ],
+      "default": "a-fazer",
+      "description": "Estado atual da m\u00e1quina no fluxo da oficina"
+    },
+    "tecnico": {
+      "type": "string",
+      "enum": [
+        "raphael",
+        "nuno",
+        "rogerio",
+        "yano",
+        "patrick"
+      ],
+      "description": "T\u00e9cnico respons\u00e1vel pela m\u00e1quina"
+    },
+    "dataAtribuicao": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data em que a m\u00e1quina foi atribu\u00edda a um t\u00e9cnico"
+    },
+    "tarefas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "texto": {
+            "type": "string"
+          },
+          "concluida": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "description": "Lista de tarefas a realizar"
+    },
+    "observacoes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "texto": {
+            "type": "string"
+          },
+          "autor": {
+            "type": "string"
+          },
+          "data": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "description": "Observa\u00e7\u00f5es sobre a m\u00e1quina"
+    },
+    "dataConclusao": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data em que a m\u00e1quina foi conclu\u00edda"
+    },
+    "historicoCriacoes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "dataCriacao": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "dataConclusao": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "estado": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Hist\u00f3rico de cria\u00e7\u00f5es anteriores desta m\u00e1quina"
+    }
+  },
+  "required": [
+    "modelo",
+    "serie",
+    "tipo"
+  ]
+}

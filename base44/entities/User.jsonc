@@ -1,0 +1,104 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "perfil": {
+      "type": "string",
+      "enum": [
+        "admin",
+        "tecnico"
+      ],
+      "default": "tecnico",
+      "description": "Perfil do utilizador"
+    },
+    "nome_tecnico": {
+      "type": "string",
+      "enum": [
+        "raphael",
+        "nuno",
+        "rogerio",
+        "patrick"
+      ],
+      "description": "Nome do t\u00e9cnico (apenas para perfil t\u00e9cnico)"
+    },
+    "senha": {
+      "type": "string",
+      "description": "Senha do utilizador (hash)"
+    },
+    "senha_definida": {
+      "type": "boolean",
+      "default": false,
+      "description": "Se o usu\u00e1rio j\u00e1 definiu uma senha"
+    },
+    "ultimo_acesso": {
+      "type": "string",
+      "format": "date-time",
+      "description": "\u00daltimo acesso ao sistema"
+    },
+    "ativo": {
+      "type": "boolean",
+      "default": true,
+      "description": "Se o perfil est\u00e1 ativo"
+    },
+    "personalizacao": {
+      "type": "object",
+      "properties": {
+        "cor": {
+          "type": "string",
+          "description": "Cor personalizada do t\u00e9cnico (hex)"
+        },
+        "gradient": {
+          "type": "string",
+          "description": "Gradiente CSS personalizado"
+        },
+        "avatar": {
+          "type": "string",
+          "description": "URL do avatar personalizado"
+        },
+        "areas": {
+          "type": "object",
+          "properties": {
+            "aFazer": {
+              "type": "object",
+              "properties": {
+                "cor": {
+                  "type": "string"
+                },
+                "gradient": {
+                  "type": "string"
+                }
+              }
+            },
+            "concluida": {
+              "type": "object",
+              "properties": {
+                "cor": {
+                  "type": "string"
+                },
+                "gradient": {
+                  "type": "string"
+                }
+              }
+            },
+            "pedidos": {
+              "type": "object",
+              "properties": {
+                "cor": {
+                  "type": "string"
+                },
+                "gradient": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "description": "Personaliza\u00e7\u00e3o das \u00e1reas principais (apenas admin)"
+        }
+      },
+      "description": "Personaliza\u00e7\u00e3o do perfil"
+    }
+  },
+  "required": [
+    "perfil"
+  ]
+}
